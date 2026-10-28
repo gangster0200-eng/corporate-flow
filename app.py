@@ -396,19 +396,6 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_attachments_object
                 ON attachments(object_type, object_id);
 
-
-CREATE TABLE IF NOT EXISTS attachments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                object_type TEXT NOT NULL,
-                object_id TEXT NOT NULL,
-                original_name TEXT NOT NULL,
-                stored_name TEXT NOT NULL,
-                uploaded_by TEXT NOT NULL,
-                uploaded_at TEXT NOT NULL
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_attachments_object
-                ON attachments(object_type, object_id);
             """
         )
 
