@@ -8,6 +8,65 @@ from datetime import date, datetime
 from pathlib import Path
 
 import streamlit as st
+def apply_corporate_style():
+    st.markdown("""
+    <style>
+    /* Основная палитра */
+    :root {
+    --navy: #414141;
+    --burgundy: #963F4B;
+    --gold: #C9A7A7;
+    --background: #FFFFFF;
+    --text: #414141;
+    --muted: #777070;
+    --border: #E8DFE0;
+}
+
+.stApp {
+    background: #FFFFFF;
+    color: #414141;
+}
+
+[data-testid="stSidebar"] {
+    background: #F7F4F4;
+    border-right: 1px solid #E8DFE0;
+}
+
+[data-testid="stSidebar"] * {
+    color: #414141;
+}
+
+h1, h2, h3 {
+    color: #6F2934 !important;
+}
+
+.stButton > button,
+.stFormSubmitButton > button {
+    background: #963F4B;
+    color: #FFFFFF;
+    border: 1px solid #963F4B;
+    border-radius: 8px;
+}
+
+.stButton > button:hover,
+.stFormSubmitButton > button:hover {
+    background: #6F2934;
+    border-color: #6F2934;
+    color: #FFFFFF;
+}
+
+[data-testid="stMetric"] {
+    background: #FFFFFF;
+    border: 1px solid #E8DFE0;
+    border-top: 3px solid #963F4B;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(80, 30, 40, 0.04);
+        }
+}
+    </style>
+    """, unsafe_allow_html=True)
+
+
 
 # =========================================================
 # НАСТРОЙКИ
@@ -654,8 +713,12 @@ def get_contracts():
 # =========================================================
 
 def login():
-    st.title("📑 Corporate Flow")
-    st.caption("Вход в систему")
+    st.title("Corporate Flow")
+st.caption(
+    f"Финансовый контур сети театральных студий · "
+    f"{user['username']} · {user['role']}"
+)
+st.divider()
 
     # Первоначальная настройка: создаём администратора
     if user_count() == 0:
@@ -1395,8 +1458,9 @@ def main_app():
 # =========================================================
 
 init_db()
+apply_corporate_style()
 
 if "user" not in st.session_state:
     login()
 else:
-    main_app() 
+    main_app()
