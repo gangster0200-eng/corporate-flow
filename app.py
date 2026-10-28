@@ -513,6 +513,7 @@ def create_request(
         "payment_date": None,
         "payment_reference": None,
         "cashless": int(cashless),
+        "department": user.get("department", "Не указан"),
         "assigned_to": "Казначейство",
     }
 
