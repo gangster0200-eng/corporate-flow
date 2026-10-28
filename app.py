@@ -432,17 +432,17 @@ def main_app():
             counterparty = st.text_input("Контрагент")
             contract_date = st.date_input("Дата договора")
             submitted = st.form_submit_button("Добавить договор")
-        if submitted:
-           if not contract_name.strip() or not counterparty.strip():
+       if submitted:
+            if not contract_name.strip() or not counterparty.strip():
                 st.error("Укажи название договора и контрагента.")
-           else:
+            else:
                 add_contract(
                     user,
                     contract_name,
                     contract_number,
                     counterparty,
                     contract_date,
-            )
+                )
                 st.success("Договор добавлен и отправлен на согласование финансовому отделу.")
                 st.rerun()
 
@@ -533,9 +533,17 @@ def main_app():
         if user["role"] not in {"Аудитор", "Администратор", "Финансовый директор"}:
             st.warning("Доступ к журналу ограничен.")
             return
+
         with db() as conn:
-            logs = conn.execute("SELECT * FROM audit_log ORDER BY occurred_at DESC LIMIT 500").fetchall()
-        st.dataframe([dict(x) for x in logs], use_container_width=True, hide_index=True)
+            logs = conn.execute(
+                "SELECT * FROM audit_log ORDER BY occurred_at DESC LIMIT 500"
+            ).fetchall()
+
+        st.dataframe(
+            [dict(x) for x in logs],
+            use_container_width=True,
+            hide_index=True,
+        )
 
 
 init_db()
