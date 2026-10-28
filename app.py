@@ -282,27 +282,51 @@ def create_request(user, counterparty, amount, currency,
                    due_date, purpose, contract_number):
     request_id = str(uuid.uuid4())[:8].upper()
 
+    values = {
+        "id": request_id,
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "created_by": user["username"],
+        "department": "Общий отдел",
+        "counterparty": counterparty.strip(),
+        "amount": amount,
+        "currency": currency,
+        "due_date": due_date.isoformat(),
+        "expense_type": "Прочие расходы",
+        "purpose": purpose.strip(),
+        "email": None,
+        "phone": None,
+        "contract_number": contract_number.strip(),
+        "status": "На проверке казначейства",
+        "assigned_to": "Казначейство",
+        "payment_date": None,
+        "payment_reference": None,
+        "file_path": None,
+        "file_original_name": None,
+        "comments": None,
+    }
+
     with db() as conn:
+        columns = {
+            row["name"]
+            for row in conn.execute(
+                "PRAGMA table_info(requests)"
+            ).fetchall()
+        }
+
+        insert_values = {
+            key: value
+            for key, value in values.items()
+            if key in columns
+        }
+
+        names = ", ".join(insert_values.keys())
+        placeholders = ", ".join(
+            "?" for _ in insert_values
+        )
+
         conn.execute(
-            """
-            INSERT INTO requests (
-                id, created_at, created_by, counterparty,
-                amount, currency, due_date, purpose,
-                contract_number, status
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                request_id, datetime.now().isoformat(timespec="seconds"),
-                user["username"],
-                counterparty.strip(),
-                amount,
-                currency,
-                due_date.isoformat(),
-                purpose.strip(),
-                contract_number.strip(),
-                "На проверке казначейства",
-            ),
+            f"INSERT INTO requests ({names}) VALUES ({placeholders})",
+            tuple(insert_values.values()),
         )
 
     audit(
@@ -311,6 +335,10 @@ def create_request(user, counterparty, amount, currency,
         "payment",
         request_id,
     )
+
+
+
+
 
 def change_payment_status(user, request_id, new_status,
                           comment="", payment_reference=""):
