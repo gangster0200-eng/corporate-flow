@@ -421,6 +421,7 @@ def main_app():
             request_details(user, row)
         else:
             st.info("По заданным фильтрам заявок не найдено.")
+            
 elif page == "Согласование договоров":
     st.title("Согласование договоров")
 
