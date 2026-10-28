@@ -432,10 +432,10 @@ def main_app():
             counterparty = st.text_input("Контрагент")
             contract_date = st.date_input("Дата договора")
             submitted = st.form_submit_button("Добавить договор")
-    if submitted:
+        if submitted:
             if not contract_name.strip() or not counterparty.strip():
                 st.error("Укажи название договора и контрагента.")
-            else:
+        else:
                 add_contract(
                     user,
                     contract_name,
@@ -506,7 +506,7 @@ def main_app():
     st.divider()
     st.subheader("Согласованные договоры")
 
-    if approved:
+        if approved:
         st.dataframe(
             [
                 {
@@ -524,9 +524,8 @@ def main_app():
             use_container_width=True,
             hide_index=True,
         )
-    else:
-        st.info("Согласованных договоров пока нет.")
-
+        else:
+            st.info("Согласованных договоров пока нет.")
 
     elif page == "Журнал действий":
         st.title("Журнал действий")
