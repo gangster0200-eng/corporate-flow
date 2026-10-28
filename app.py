@@ -443,8 +443,8 @@ def main_app():
                     counterparty,
                     contract_date,
             )
-            st.success("Договор добавлен и отправлен на согласование финансовому отделу.")
-            st.rerun()
+                st.success("Договор добавлен и отправлен на согласование финансовому отделу.")
+                st.rerun()
 
     with db() as conn:
         contracts = conn.execute(
