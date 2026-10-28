@@ -1290,10 +1290,8 @@ def show_contracts(user):
         )
     else:
         st.info("Согласованных договоров пока нет.")
-
-
-st.divider()
-    st.subheader("Прикреплённые документы договоров")
+        st.divider()
+        st.subheader("Прикреплённые документы договоров")
 
     if contracts:
         contract_options = {
