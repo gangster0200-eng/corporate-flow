@@ -714,14 +714,11 @@ def get_contracts():
 
 def login():
     st.title("Corporate Flow")
-st.caption(
-    f"Финансовый контур сети театральных студий · "
-    f"{user['username']} · {user['role']}"
-)
-st.divider()
+    st.caption("Финансовая система сети детских театральных студий")
+    st.divider()
 
     # Первоначальная настройка: создаём администратора
-        if user_count() == 0:
+    if user_count() == 0:
         st.subheader("Первоначальная настройка")
         st.info(
             "Создай пароль администратора. После этого "
