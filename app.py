@@ -144,10 +144,7 @@ def create_request(user, counterparty, amount, currency,
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                request_id,
-
-
-ime.now().isoformat(timespec="seconds"),
+                request_id, time.now().isoformat(timespec="seconds"),
                 user["username"],
                 counterparty.strip(),
                 amount,
@@ -456,10 +453,7 @@ def show_create_payment(user):
             "Срок оплаты",
             value=date.today(),
         )
-        purpose = st.text_area("На
-
-
-значение платежа")
+        purpose = st.text_area("Назначение платежа")
         contract_number = st.text_input("Номер договора")
 
         submitted = st.form_submit_button("Создать заявку")
@@ -601,10 +595,7 @@ def show_payments(user):
         role == "Финансовый директор"
         and status == "На согласовании финансового директора"
     ):
-        comment = st.te
-
-
-xt_input("Комментарий финансового директора")
+        comment = st.text_input("Комментарий финансового директора")
 
         c1, c2, c3 = st.columns(3)
 
