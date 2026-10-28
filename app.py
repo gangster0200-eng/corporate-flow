@@ -183,9 +183,11 @@ def save_attachments(user, object_type, object_id, uploaded_files):
 
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+    # Права доступа к папке могут быть недоступны
+    # в некоторых окружениях Streamlit Cloud.
     try:
         os.chmod(UPLOAD_DIR, 0o700)
-    except OSError:
+    except (OSError, NotImplementedError, PermissionError):
         pass
 
     for uploaded_file in uploaded_files:
