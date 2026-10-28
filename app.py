@@ -378,11 +378,6 @@ def init_db():
                 details TEXT
             );
 
-            CREATE INDEX IF NOT EXISTS idx_requests_status
-                ON requests(status);
-
-            CREATE INDEX IF NOT EXISTS idx_contracts_status
-                ON contracts(status);
             CREATE TABLE IF NOT EXISTS users (
                 username TEXT PRIMARY KEY,
                 role TEXT NOT NULL,
@@ -390,6 +385,7 @@ def init_db():
                 password_salt TEXT NOT NULL,
                 created_at TEXT NOT NULL
             );
+
             CREATE TABLE IF NOT EXISTS attachments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 object_type TEXT NOT NULL,
@@ -400,10 +396,47 @@ def init_db():
                 uploaded_at TEXT NOT NULL
             );
 
+            CREATE INDEX IF NOT EXISTS idx_requests_status
+                ON requests(status);
+
+            CREATE INDEX IF NOT EXISTS idx_contracts_status
+                ON contracts(status);
+
             CREATE INDEX IF NOT EXISTS idx_attachments_object
                 ON attachments(object_type, object_id);
             """
         )
+
+        # Добавляем новые столбцы в существующую базу данных,
+        # если их там ещё нет.
+        request_columns = {
+            row["name"]
+            for row in conn.execute(
+                "PRAGMA table_info(requests)"
+            ).fetchall()
+        }
+
+        if "cashless" not in request_columns:
+            conn.execute(
+                """
+                ALTER TABLE requests
+                ADD COLUMN cashless INTEGER NOT NULL DEFAULT 1
+                """
+            )
+
+        if "assigned_to" not in request_columns:
+            conn.execute(
+                """
+                ALTER TABLE requests
+                ADD COLUMN assigned_to TEXT
+                """
+            )
+
+
+
+
+
+
 
 def audit(actor, action, object_type="", object_id="", details=""):
     with db() as conn:
