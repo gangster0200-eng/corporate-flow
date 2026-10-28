@@ -293,7 +293,7 @@ def create_request(user, counterparty, amount, currency,
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                request_id, time.now().isoformat(timespec="seconds"),
+                request_id, datetime.now().isoformat(timespec="seconds"),
                 user["username"],
                 counterparty.strip(),
                 amount,
