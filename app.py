@@ -21,12 +21,15 @@ ROLES = [
     "Аудитор", "Администратор"
 ]
 STATUSES = [
-    "Черновик", "На согласовании руководителя", "На проверке финансов",
-    "На проверке юриста", "На согласовании финансового директора",
-    "Готов к оплате", "Оплачен", "Отклонён", "На доработке"
+    "Черновик",
+    "На проверке казначейства",
+    "На проверке финансов",
+    "На согласовании финансового директора",
+    "Готов к оплате",
+    "Оплачен",
+    "Отклонён",
+    "На доработке",
 ]
-
-st.set_page_config(page_title=APP_NAME, page_icon="📑", layout="wide")
 
 
 def db():
@@ -34,7 +37,52 @@ def db():
     conn.row_factory = sqlite3.Row
     return conn
 
+def add_contract(user, contract_name, contract_number, counterparty, contract_date):
+    with db() as conn:
+        conn.execute(
+            """
+            INSERT INTO contracts (
+                created_at, created_by, contract_name,
+                contract_number, counterparty, contract_date, status
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                datetime.now().isoformat(timespec="seconds"),
+                user["username"],
+                contract_name.strip(),
+                contract_number.strip(),
+                counterparty.strip(),
+                contract_date.isoformat(),
+                "Согласование фин отделом",
+            ),
+        )
+    audit(user["username"], "contract_created")
 
+def approve_contract(user, contract_id):
+    if user["role"] != "Финансовый директор":
+        raise PermissionError("Согласовывать договоры может только финансовый директор.")
+
+    with db() as conn:
+        result = conn.execute(
+            """
+            UPDATE contracts
+            SET status = ?, approved_by = ?, approved_at = ?
+            WHERE id = ? AND status = ?
+            """,
+            (
+                "Согласован",
+                user["username"],
+                datetime.now().isoformat(timespec="seconds"),
+                contract_id,
+                "Согласование фин отделом",
+            ),
+        )
+        if result.rowcount == 0:
+            return False
+
+    audit(user["username"], "contract_approved")
+    return True
 def init_db():
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     # Restrict directory permissions where the OS supports it.
@@ -76,6 +124,19 @@ def init_db():
         );
         CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status);
         CREATE INDEX IF NOT EXISTS idx_requests_counterparty ON requests(counterparty);
+        CREATE TABLE IF NOT EXISTS contracts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            created_by TEXT NOT NULL,
+            contract_name TEXT NOT NULL,
+            contract_number TEXT,
+            counterparty TEXT NOT NULL,
+            contract_date TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'Согласование фин отделом',
+            approved_by TEXT,
+            approved_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_contracts_status ON contracts(status);
         """)
 
 
@@ -141,15 +202,32 @@ def visible_requests(user):
 
 def next_status_options(role, current):
     allowed = {
-        "Инициатор": {"Черновик": ["На согласовании руководителя"], "На доработке": ["На согласовании руководителя"]},
-        "Руководитель": {"На согласовании руководителя": ["На проверке финансов", "Отклонён", "На доработке"]},
-        "Финансы": {"На проверке финансов": ["На проверке юриста", "На согласовании финансового директора", "Отклонён", "На доработке"]},
-        "Юрист": {"На проверке юриста": ["На согласовании финансового директора", "Отклонён", "На доработке"]},
-        "Финансовый директор": {"На согласовании финансового директора": ["Готов к оплате", "Отклонён", "На доработке"]},
-        "Бухгалтерия": {"Готов к оплате": ["Готов к оплате"]},
-        "Казначейство": {"Готов к оплате": ["Оплачен"]},
-        "Администратор": {s: [x for x in STATUSES if x != s] for s in STATUSES},
+        "Инициатор": {
+            "Черновик": ["На согласовании руководителя"],
+            "На доработке": ["На согласовании руководителя"],
+        },
+        "Руководитель": {
+            "На согласовании руководителя": [
+                "Отклонен",
+                "На доработке",
+            ],
+        },
+        "Финансы": {},
+        "Финансовый директор": {
+            "На согласовании финансового директора": [
+                "Готов к оплате",
+                "Отклонен",
+                "На доработке",
+            ],
+        },
+        "Бухгалтерия": {},
+        "Казначейство": {
+            "Готов к оплате": ["Оплачен"],
+        },
+        "Аудитор": {},
+        "Администратор": {},
     }
+
     return allowed.get(role, {}).get(current, [])
 
 
@@ -290,11 +368,18 @@ def main_app():
     with st.sidebar:
         st.title("📑 Corporate Flow")
         st.caption(f"{user['username']} · {user['role']}")
-        page = st.radio("Раздел", ["Обзор", "Создать заявку", "Заявки", "Журнал действий"])
-        if st.button("Выйти", use_container_width=True):
-            audit(user["username"], "logout")
-            del st.session_state.user
-            st.rerun()
+        st.title("📑 Corporate Flow")
+        st.caption(f"{user['username']} · {user['role']}")
+        page = st.radio(
+    "Раздел",
+    [
+        "Обзор",
+        "Согласование платежей",
+        "Заявки",
+        "Согласование договоров",
+        "Журнал действий",
+    ],
+)
 
     if page == "Обзор":
         st.title("Рабочий стол")
@@ -318,8 +403,8 @@ def main_app():
         else:
             st.info("Заявок пока нет.")
 
-    elif page == "Создать заявку":
-        st.title("Создание заявки")
+    elif page == "Согласование платежей":
+        st.title("Согласование платежей")
         request_form(user)
 
     elif page == "Заявки":
@@ -336,6 +421,113 @@ def main_app():
             request_details(user, row)
         else:
             st.info("По заданным фильтрам заявок не найдено.")
+elif page == "Согласование договоров":
+    st.title("Согласование договоров")
+
+    st.subheader("Добавить договор")
+
+    with st.form("contract_form", clear_on_submit=True):
+        contract_name = st.text_input("Название договора")
+        contract_number = st.text_input("Номер договора")
+        counterparty = st.text_input("Контрагент")
+        contract_date = st.date_input("Дата договора")
+        submitted = st.form_submit_button("Добавить договор")
+
+    if submitted:
+        if not contract_name.strip() or not counterparty.strip():
+            st.error("Укажи название договора и контрагента.")
+        else:
+            add_contract(
+                user,
+                contract_name,
+                contract_number,
+                counterparty,
+                contract_date,
+            )
+            st.success("Договор добавлен и отправлен на согласование финансовому отделу.")
+            st.rerun()
+
+    with db() as conn:
+        contracts = conn.execute(
+            "SELECT * FROM contracts ORDER BY id DESC"
+        ).fetchall()
+
+    pending = [
+        dict(c) for c in contracts
+        if c["status"] == "Согласование фин отделом"
+    ]
+    approved = [
+        dict(c) for c in contracts
+        if c["status"] == "Согласован"
+    ]
+
+    st.divider()
+    st.subheader("Согласование фин отделом")
+
+    if pending:
+        st.dataframe(
+            [
+                {
+                    "№": c["id"],
+                    "Название": c["contract_name"],
+                    "Номер договора": c["contract_number"] or "—",
+                    "Контрагент": c["counterparty"],
+                    "Дата": c["contract_date"],
+                    "Добавил": c["created_by"],
+                    "Статус": c["status"],
+                }
+                for c in pending
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        if user["role"] == "Финансовый директор":
+            contract_options = {
+                f'{c["id"]} · {c["contract_name"]} · {c["counterparty"]}': c["id"]
+                for c in pending
+            }
+
+            chosen_contract = st.selectbox(
+                "Выбери договор для согласования",
+                list(contract_options.keys()),
+            )
+
+            if st.button("Согласовать договор"):
+                if approve_contract(user, contract_options[chosen_contract]):
+                    st.success("Договор согласован.")
+                    st.rerun()
+                else:
+                    st.warning("Договор уже согласован или не найден.")
+        else:
+            st.info("Согласовывать договоры может только финансовый директор.")
+    else:
+        st.info("Договоров, ожидающих согласования, пока нет.")
+
+    st.divider()
+    st.subheader("Согласованные договоры")
+
+    if approved:
+        st.dataframe(
+            [
+                {
+                    "№": c["id"],
+                    "Название": c["contract_name"],
+                    "Номер договора": c["contract_number"] or "—",
+                    "Контрагент": c["counterparty"],
+                    "Дата": c["contract_date"],
+                    "Согласовал": c["approved_by"] or "—",
+                    "Дата согласования": c["approved_at"] or "—",
+                    "Статус": c["status"],
+                }
+                for c in approved
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+    else:
+        st.info("Согласованных договоров пока нет.")
+
 
     elif page == "Журнал действий":
         st.title("Журнал действий")
