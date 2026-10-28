@@ -432,7 +432,7 @@ def main_app():
             counterparty = st.text_input("Контрагент")
             contract_date = st.date_input("Дата договора")
             submitted = st.form_submit_button("Добавить договор")
-       if submitted:
+    if submitted:
             if not contract_name.strip() or not counterparty.strip():
                 st.error("Укажи название договора и контрагента.")
             else:
@@ -544,10 +544,3 @@ def main_app():
             use_container_width=True,
             hide_index=True,
         )
-
-
-init_db()
-if "user" not in st.session_state:
-    login()
-else:
-    main_app()
