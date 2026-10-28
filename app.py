@@ -486,63 +486,64 @@ def audit(actor, action, object_type="", object_id="", details=""):
 # ПЛАТЕЖИ
 # =========================================================
 
-def create_request(user, counterparty, amount, currency,
-                   due_date, purpose, contract_number):
-    request_id = str(uuid.uuid4())[:8].upper()
+def create_request(
+    user,
+    counterparty,
+    amount,
+    currency,
+    due_date,
+    purpose,
+    contract_number,
+    cashless=True,
+):
+    request_id = str(uuid.uuid4())
 
     values = {
         "id": request_id,
         "created_at": datetime.now().isoformat(timespec="seconds"),
         "created_by": user["username"],
-        "department": "Общий отдел",
-        "counterparty": counterparty.strip(),
+        "counterparty": counterparty,
         "amount": amount,
         "currency": currency,
-        "due_date": due_date.isoformat(),
-        "expense_type": "Прочие расходы",
-        "purpose": purpose.strip(),
-        "email": None,
-        "phone": None,
-        "contract_number": contract_number.strip(),
+        "due_date": str(due_date),
+        "purpose": purpose,
+        "contract_number": contract_number,
         "status": "На проверке казначейства",
-        "assigned_to": "Казначейство",
+        "comments": "",
         "payment_date": None,
         "payment_reference": None,
-        "file_path": None,
-        "file_original_name": None,
-        "comments": None,
+        "cashless": int(cashless),
+        "assigned_to": "Казначейство",
     }
 
     with db() as conn:
-        columns = {
+        existing_columns = {
             row["name"]
             for row in conn.execute(
                 "PRAGMA table_info(requests)"
             ).fetchall()
         }
 
-        insert_values = {
+        available_values = {
             key: value
             for key, value in values.items()
-            if key in columns
+            if key in existing_columns
         }
 
-        names = ", ".join(insert_values.keys())
+        columns = ", ".join(available_values.keys())
         placeholders = ", ".join(
-            "?" for _ in insert_values
+            ["?"] * len(available_values)
         )
 
         conn.execute(
-            f"INSERT INTO requests ({names}) VALUES ({placeholders})",
-            tuple(insert_values.values()),
+            f"INSERT INTO requests ({columns}) VALUES ({placeholders})",
+            list(available_values.values()),
         )
 
-    audit(
-        user["username"],
-        "payment_created",
-        "payment",
-        request_id,
-    )
+    return request_id
+
+
+
 
 
 
@@ -986,6 +987,12 @@ def show_create_payment(user):
             "Валюта",
             ["RUB", "USD", "EUR", "CNY"],
         )
+        cashless_label = st.radio(
+            "Безналичная оплата",
+            ["Да", "Нет"],
+            horizontal=True,
+            help="Выберите «Да» для безналичного платежа, «Нет» — для выдачи наличных.",
+        )
         due_date = st.date_input(
             "Срок оплаты",
             value=date.today(),
@@ -1020,7 +1027,16 @@ def show_create_payment(user):
                 )
 
                 requests = get_requests()
-                request_id = requests[0]["id"]
+                request_id = create_request(
+                user=user,
+                counterparty=counterparty,
+                amount=amount,
+                currency=currency,
+                due_date=due_date,
+                purpose=purpose,
+                contract_number=contract_number,
+                cashless=(cashless_label == "Да"),
+            )
 
                 save_attachments(
                     user,
