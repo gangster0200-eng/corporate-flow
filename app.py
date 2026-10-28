@@ -20,6 +20,13 @@ st.set_page_config(
 )
 
 DB_PATH = Path(__file__).resolve().parent / "corporate_flow.db"
+UPLOAD_DIR = Path(__file__).resolve().parent / "uploads"
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 МБ на файл
+
+ALLOWED_EXTENSIONS = {
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx",
+    ".png", ".jpg", ".jpeg", ".txt", ".csv",
+}
 
 ROLES = [
     "Инициатор",
@@ -170,7 +177,102 @@ def change_password(username, old_password, new_password):
 
 
 
+def save_attachments(user, object_type, object_id, uploaded_files):
+    if not uploaded_files:
+        return
 
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+    try:
+        os.chmod(UPLOAD_DIR, 0o700)
+    except OSError:
+        pass
+
+    for uploaded_file in uploaded_files:
+        original_name = Path(uploaded_file.name).name
+        extension = Path(original_name).suffix.lower()
+
+        if extension not in ALLOWED_EXTENSIONS:
+            raise ValueError(
+                f"Формат файла {original_name} не поддерживается."
+            )
+
+        file_bytes = uploaded_file.getvalue()
+
+        if len(file_bytes) > MAX_FILE_SIZE:
+            raise ValueError(
+                f"Файл {original_name} превышает размер 10 МБ."
+            )
+
+        stored_name = f"{secrets.token_hex(16)}{extension}"
+        stored_path = UPLOAD_DIR / stored_name
+
+        stored_path.write_bytes(file_bytes)
+
+        with db() as conn:
+            conn.execute(
+                """
+                INSERT INTO attachments (
+                    object_type, object_id, original_name,
+                    stored_name, uploaded_by, uploaded_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    object_type,
+                    str(object_id),
+                    original_name,
+                    stored_name,
+                    user["username"],
+                    datetime.now().isoformat(timespec="seconds"),
+                ),
+            )
+
+        audit(
+            user["username"],
+            "file_uploaded",
+            object_type,
+            object_id,
+            original_name,
+        )
+
+def get_attachments(object_type, object_id):
+    with db() as conn:
+        rows = conn.execute(
+            """
+            SELECT * FROM attachments
+            WHERE object_type = ? AND object_id = ?
+            ORDER BY uploaded_at DESC
+            """,
+            (object_type, str(object_id)),
+        ).fetchall()
+
+    return [dict(row) for row in rows]
+
+def show_attachments(object_type, object_id):
+    files = get_attachments(object_type, object_id)
+
+    if not files:
+        st.caption("Прикреплённых файлов пока нет.")
+        return
+
+    st.write("**Прикреплённые файлы**")
+
+    for file_info in files:
+        file_path = UPLOAD_DIR / file_info["stored_name"]
+
+        if file_path.is_file():
+            with open(file_path, "rb") as file_handle:
+                st.download_button(
+                    label=f'Скачать: {file_info["original_name"]}',
+                    data=file_handle.read(),
+                    file_name=file_info["original_name"],
+                    key=f'file_{object_type}_{object_id}_{file_info["id"]}',
+                )
+        else:
+            st.warning(
+                f'Файл {file_info["original_name"]} не найден в хранилище.'
+            )
 def init_db():
     with db() as conn:
         conn.executescript(
@@ -227,6 +329,32 @@ def init_db():
                 password_salt TEXT NOT NULL,
                 created_at TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS attachments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                object_type TEXT NOT NULL,
+                object_id TEXT NOT NULL,
+                original_name TEXT NOT NULL,
+                stored_name TEXT NOT NULL,
+                uploaded_by TEXT NOT NULL,
+                uploaded_at TEXT NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_attachments_object
+                ON attachments(object_type, object_id);
+
+
+CREATE TABLE IF NOT EXISTS attachments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                object_type TEXT NOT NULL,
+                object_id TEXT NOT NULL,
+                original_name TEXT NOT NULL,
+                stored_name TEXT NOT NULL,
+                uploaded_by TEXT NOT NULL,
+                uploaded_at TEXT NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_attachments_object
+                ON attachments(object_type, object_id);
             """
         )
 
@@ -783,6 +911,15 @@ def show_create_payment(user):
         )
         purpose = st.text_area("Назначение платежа")
         contract_number = st.text_input("Номер договора")
+        uploaded_files = st.file_uploader(
+            "Прикрепить документы к платежу",
+            type=[
+                "pdf", "doc", "docx", "xls", "xlsx",
+                "png", "jpg", "jpeg", "txt", "csv",
+            ],
+            accept_multiple_files=True,
+            help="До 10 МБ на каждый файл.",
+        )
 
         submitted = st.form_submit_button("Создать заявку")
 
@@ -790,17 +927,37 @@ def show_create_payment(user):
         if not counterparty.strip() or not purpose.strip():
             st.error("Заполни контрагента и назначение платежа.")
         else:
-            create_request(
-                user,
-                counterparty,
-                amount,
-                currency,
-                due_date,
-                purpose,
-                contract_number,
-            )
-            st.success("Заявка создана и отправлена в казначейство.")
-            st.rerun()
+            try:
+                create_request(
+                    user,
+                    counterparty,
+                    amount,
+                    currency,
+                    due_date,
+                    purpose,
+                    contract_number,
+                )
+
+                requests = get_requests()
+                request_id = requests[0]["id"]
+
+                save_attachments(
+                    user,
+                    "payment",
+                    request_id,
+                    uploaded_files,
+                )
+
+                st.success(
+                    f"Заявка {request_id} создана и отправлена в казначейство."
+                )
+                st.rerun()
+
+            except (ValueError, OSError) as error:
+                st.error(str(error))
+
+
+
 
 # =========================================================
 # РАЗДЕЛ: РЕЕСТР ПЛАТЕЖЕЙ
@@ -882,6 +1039,7 @@ def show_payments(user):
         st.write("**Статус:**", request["status"])
         st.write("**Назначение:**", request["purpose"])
         st.write("**Комментарий:**", request["comments"] or "—")
+        show_attachments("payment", request["id"])
 
     role = user["role"]
     status = request["status"]
@@ -995,24 +1153,53 @@ def show_contracts(user):
             "Дата договора",
             value=date.today(),
         )
+        uploaded_files = st.file_uploader(
+            "Прикрепить договор и приложения",
+            type=[
+                "pdf", "doc", "docx", "xls", "xlsx",
+                "png", "jpg", "jpeg", "txt", "csv",
+            ],
+            accept_multiple_files=True,
+            help="До 10 МБ на каждый файл.",
+        )
         submitted = st.form_submit_button("Добавить договор")
 
     if submitted:
         if not contract_name.strip() or not counterparty.strip():
             st.error("Укажи название договора и контрагента.")
         else:
-            add_contract(
-                user,
-                contract_name,
-                contract_number,
-                counterparty,
-                contract_date,
-            )
-            st.success(
-                "Договор добавлен и отправлен на согласование "
-                "финансовому отделу."
-            )
-            st.rerun()
+            try:
+                add_contract(
+                    user,
+                    contract_name,
+                    contract_number,
+                    counterparty,
+                    contract_date,
+                )
+
+                contracts = get_contracts()
+                contract_id = contracts[0]["id"]
+
+                save_attachments(
+                    user,
+                    "contract",
+                    contract_id,
+                    uploaded_files,
+                )
+
+                st.success(
+                    f"Договор №{contract_id} добавлен и отправлен на согласование."
+                )
+                st.rerun()
+
+            except (ValueError, OSError) as error:
+                st.error(str(error))
+
+
+
+
+
+
 
     contracts = get_contracts()
 
@@ -1103,6 +1290,28 @@ def show_contracts(user):
         )
     else:
         st.info("Согласованных договоров пока нет.")
+
+
+st.divider()
+    st.subheader("Прикреплённые документы договоров")
+
+    if contracts:
+        contract_options = {
+            f'{c["id"]} · {c["contract_name"]} · {c["counterparty"]}': c["id"]
+            for c in contracts
+        }
+
+        selected_contract = st.selectbox(
+            "Выбери договор для просмотра файлов",
+            list(contract_options.keys()),
+            key="contract_files_select",
+        )
+
+        selected_contract_id = contract_options[selected_contract]
+
+        show_attachments("contract", selected_contract_id)
+    else:
+        st.info("Сначала добавь договор.")
 
 # =========================================================
 # РАЗДЕЛ: ЖУРНАЛ ДЕЙСТВИЙ
