@@ -422,19 +422,19 @@ def main_app():
         else:
             st.info("По заданным фильтрам заявок не найдено.")
             
-    elif page == "Согласование договоров":
-    st.title("Согласование договоров")
+   elif page == "Согласование договоров":
+        st.title("Согласование договоров")
 
-    st.subheader("Добавить договор")
+        st.subheader("Добавить договор")
 
-    with st.form("contract_form", clear_on_submit=True):
-        contract_name = st.text_input("Название договора")
-        contract_number = st.text_input("Номер договора")
-        counterparty = st.text_input("Контрагент")
-        contract_date = st.date_input("Дата договора")
-        submitted = st.form_submit_button("Добавить договор")
+        with st.form("contract_form", clear_on_submit=True):
+            contract_name = st.text_input("Название договора")
+            contract_number = st.text_input("Номер договора")
+            counterparty = st.text_input("Контрагент")
+            contract_date = st.date_input("Дата договора")
+            submitted = st.form_submit_button("Добавить договор")
 
-    if submitted:
+        if submitted:
         if not contract_name.strip() or not counterparty.strip():
             st.error("Укажи название договора и контрагента.")
         else:
