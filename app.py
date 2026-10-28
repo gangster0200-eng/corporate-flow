@@ -107,24 +107,48 @@ def init_db():
 
 def audit(actor, action, object_type="", object_id="", details=""):
     with db() as conn:
-        conn.execute(
-            """
-            INSERT INTO audit_log (
-                occurred_at, actor, action,
-                object_type, object_id, details
-            )
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (
-                datetime.now().isoformat(timespec="seconds"),
-                actor,
-                action,
-                object_type,
-                str(object_id),
-                details,
-            ),
-        )
+        columns = {
+            row["name"]
+            for row in conn.execute(
+                "PRAGMA table_info(audit_log)"
+            ).fetchall()
+        }
 
+        if "object_type" in columns and "object_id" in columns:
+            conn.execute(
+                """
+                INSERT INTO audit_log (
+                    occurred_at, actor, action,
+                    object_type, object_id, details
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    datetime.now().isoformat(timespec="seconds"),
+                    actor,
+                    action,
+                    object_type,
+                    str(object_id),
+                    details,
+                ),
+            )
+        else:
+            conn.execute(
+                """
+                INSERT INTO audit_log (
+                    occurred_at, actor, action,
+                    request_id, details
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    datetime.now().isoformat(timespec="seconds"),
+                    actor,
+                    action,
+                    str(object_id),
+                    details or object_type,
+                ),
+            )
 # =========================================================
 # ПЛАТЕЖИ
 # =========================================================
