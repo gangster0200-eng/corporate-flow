@@ -1,4 +1,7 @@
 import sqlite3
+import hashlib
+import hmac
+import secrets
 import uuid
 from contextlib import contextmanager
 from datetime import date, datetime
@@ -52,6 +55,121 @@ def db():
         raise
     finally:
         conn.close()
+# Логины и соответствующие им роли
+USER_ROLES = {
+    "initiator": "Инициатор",
+    "treasury": "Казначейство",
+    "cfo": "Финансовый директор",
+    "auditor": "Аудитор",
+    "admin": "Администратор",
+}
+
+def hash_password(password, salt):
+    return hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt.encode("utf-8"),
+        300000,
+    ).hex()
+
+def user_exists(username):
+    with db() as conn:
+        row = conn.execute(
+            "SELECT username FROM users WHERE username = ?",
+            (username,),
+        ).fetchone()
+    return row is not None
+
+def user_count():
+    with db() as conn:
+        return conn.execute(
+            "SELECT COUNT(*) FROM users"
+        ).fetchone()[0]
+
+def create_user(username, password):
+    if username not in USER_ROLES:
+        raise ValueError("Неизвестный логин.")
+
+    if len(password) < 10:
+        raise ValueError("Пароль должен содержать не менее 10 символов.")
+
+    salt = secrets.token_hex(16)
+    password_hash = hash_password(password, salt)
+
+    with db() as conn:
+        conn.execute(
+            """
+            INSERT INTO users (
+                username, role, password_hash,
+                password_salt, created_at
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                username,
+                USER_ROLES[username],
+                password_hash,
+                salt,
+                datetime.now().isoformat(timespec="seconds"),
+            ),
+        )
+
+def check_password(username, password):
+    with db() as conn:
+        row = conn.execute(
+            """
+            SELECT username, role, password_hash, password_salt
+            FROM users
+            WHERE username = ?
+            """,
+            (username,),
+        ).fetchone()
+
+    if row is None:
+        return None
+
+    calculated_hash = hash_password(password, row["password_salt"])
+
+    if not hmac.compare_digest(
+        calculated_hash,
+        row["password_hash"],
+    ):
+        return None
+
+    return {
+        "username": row["username"],
+        "role": row["role"],
+    }
+
+def change_password(username, old_password, new_password):
+    user = check_password(username, old_password)
+
+    if user is None:
+        return False, "Старый пароль введён неверно."
+
+    if len(new_password) < 10:
+        return False, "Новый пароль должен содержать не менее 10 символов."
+
+    salt = secrets.token_hex(16)
+    password_hash = hash_password(new_password, salt)
+
+    with db() as conn:
+        conn.execute(
+            """
+            UPDATE users
+            SET password_hash = ?, password_salt = ?
+            WHERE username = ?
+            """,
+            (password_hash, salt, username),
+        )
+
+    audit(username, "password_changed", "user", username)
+    return True, "Пароль успешно изменён."
+
+
+
+
+
 
 def init_db():
     with db() as conn:
@@ -102,6 +220,13 @@ def init_db():
 
             CREATE INDEX IF NOT EXISTS idx_contracts_status
                 ON contracts(status);
+            CREATE TABLE IF NOT EXISTS users (
+                username TEXT PRIMARY KEY,
+                role TEXT NOT NULL,
+                password_hash TEXT NOT NULL,
+                password_salt TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
             """
         )
 
@@ -379,26 +504,177 @@ def get_contracts():
 
 def login():
     st.title("📑 Corporate Flow")
-    st.caption("Демонстрационная версия системы согласования")
+    st.caption("Вход в систему")
+
+    # Первоначальная настройка: создаём администратора
+    if user_count() == 0:
+        st.subheader("Первоначальная настройка")
+        st.info(
+            "Создай пароль администратора. После этого "
+            "администратор сможет настроить остальные учётные записи."
+        )
+
+        with st.form("initial_admin_form"):
+            password1 = st.text_input(
+                "Пароль администратора",
+                type="password",
+            )
+            password2 = st.text_input(
+                "Повтори пароль",
+                type="password",
+            )
+            submitted = st.form_submit_button(
+                "Создать администратора",
+                use_container_width=True,
+            )
+
+        if submitted:
+            if password1 != password2:
+                st.error("Пароли не совпадают.")
+            elif len(password1) < 10:
+                st.error("Пароль должен содержать не менее 10 символов.")
+            else:
+                create_user("admin", password1)
+                st.success(
+                    "Администратор создан. Теперь войди с логином admin."
+                )
+                st.rerun()
+
+        return
 
     with st.form("login_form"):
-        username = st.text_input("Имя пользователя")
-        role = st.selectbox("Роль", ROLES)
+        username = st.text_input("Логин").strip().lower()
+        password = st.text_input("Пароль", type="password")
         submitted = st.form_submit_button(
             "Войти",
             use_container_width=True,
         )
 
     if submitted:
-        if not username.strip():
-            st.error("Введи имя пользователя.")
+        user = check_password(username, password)
+
+        if user is None:
+            st.error("Неверный логин или пароль.")
         else:
-            st.session_state.user = {
-                "username": username.strip(),
-                "role": role,
-            }
-            audit(username.strip(), "login")
+            st.session_state.user = user
+            audit(username, "login")
             st.rerun()
+def show_password_change(user):
+    st.title("Смена пароля")
+
+    with st.form("change_password_form"):
+        old_password = st.text_input(
+            "Текущий пароль",
+            type="password",
+        )
+        new_password = st.text_input(
+            "Новый пароль",
+            type="password",
+        )
+        confirm_password = st.text_input(
+            "Повтори новый пароль",
+            type="password",
+        )
+        submitted = st.form_submit_button("Изменить пароль")
+
+    if submitted:
+        if new_password != confirm_password:
+            st.error("Новые пароли не совпадают.")
+        else:
+            success, message = change_password(
+                user["username"],
+                old_password,
+                new_password,
+            )
+            if success:
+                st.success(message)
+            else:
+                st.error(message)
+
+def show_user_management(user):
+    st.title("Управление пользователями")
+
+    if user["role"] != "Администратор":
+        st.warning("Этот раздел доступен только администратору.")
+        return
+
+    st.subheader("Создать учётную запись")
+
+    with st.form("create_user_form"):
+        available_users = [
+            username
+            for username in USER_ROLES
+            if not user_exists(username)
+        ]
+
+        if not available_users:
+            st.info("Все предусмотренные учётные записи уже созданы.")
+            return
+
+        username = st.selectbox(
+            "Должность / логин",
+            available_users,
+            format_func=lambda name: (
+                f"{USER_ROLES[name]} ({name})"
+            ),
+        )
+        password1 = st.text_input(
+            "Пароль",
+            type="password",
+        )
+        password2 = st.text_input(
+            "Повтори пароль",
+            type="password",
+        )
+        submitted = st.form_submit_button("Создать пользователя")
+
+    if submitted:
+        if password1 != password2:
+            st.error("Пароли не совпадают.")
+        elif len(password1) < 10:
+            st.error("Пароль должен содержать не менее 10 символов.")
+        else:
+            create_user(username, password1)
+            audit(
+                user["username"],
+                "user_created",
+                "user",
+                username,
+            )
+            st.success(
+                f"Создан пользователь {username} "
+                f"({USER_ROLES[username]})."
+            )
+            st.rerun()
+
+    st.divider()
+    st.subheader("Существующие учётные записи")
+
+    with db() as conn:
+        rows = conn.execute(
+            """
+            SELECT username, role, created_at
+            FROM users
+            ORDER BY username
+            """
+        ).fetchall()
+
+    if rows:
+        st.dataframe(
+            [dict(row) for row in rows],
+            use_container_width=True,
+            hide_index=True,
+        )
+
+
+
+
+
+
+
+
+
+
 
 # =========================================================
 # РАЗДЕЛ: ОБЗОР
@@ -850,6 +1126,8 @@ def main_app():
             "Согласование платежа",
             "Заявки",
             "Согласование договоров",
+            "Смена пароля",
+            "Управление пользователями",
             "Журнал действий",
         ],
     )
@@ -875,6 +1153,12 @@ def main_app():
 
     elif page == "Журнал действий":
         show_audit_log(user)
+        
+    elif page == "Смена пароля":
+        show_password_change(user)
+
+    elif page == "Управление пользователями":
+        show_user_management(user)
 
 # =========================================================
 # ЗАПУСК
