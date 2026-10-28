@@ -402,21 +402,6 @@ def init_db():
 
             CREATE INDEX IF NOT EXISTS idx_attachments_object
                 ON attachments(object_type, object_id);
-                request_columns = {
-            row["name"]
-            for row in conn.execute("PRAGMA table_info(requests)").fetchall()
-        }
-
-        if "cashless" not in request_columns:
-            conn.execute(
-                "ALTER TABLE requests ADD COLUMN cashless INTEGER NOT NULL DEFAULT 1"
-            )
-
-        if "assigned_to" not in request_columns:
-            conn.execute(
-                "ALTER TABLE requests ADD COLUMN assigned_to TEXT"
-            )
-
             """
         )
 
