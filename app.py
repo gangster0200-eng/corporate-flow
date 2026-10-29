@@ -156,7 +156,7 @@ def hash_password(password, salt):
 def user_exists(username):
     with db() as conn:
         row = conn.execute(
-            "SELECT username FROM users WHERE username = ?",
+            "SELECT username FROM users WHERE username = %s",
             (username,),
         ).fetchone()
     return row is not None
@@ -184,7 +184,7 @@ def create_user(username, password):
                 username, role, password_hash,
                 password_salt, created_at
             )
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s)
             """,
             (
                 username,
@@ -201,7 +201,7 @@ def check_password(username, password):
             """
             SELECT username, role, password_hash, password_salt
             FROM users
-            WHERE username = ?
+            WHERE username = 
             """,
             (username,),
         ).fetchone()
@@ -238,8 +238,8 @@ def change_password(username, old_password, new_password):
         conn.execute(
             """
             UPDATE users
-            SET password_hash = ?, password_salt = ?
-            WHERE username = ?
+            SET password_hash = %s, password_salt = %s
+            WHERE username = %s
             """,
             (password_hash, salt, username),
         )
@@ -285,7 +285,7 @@ def save_attachments(user, object_type, object_id, uploaded_files):
                     object_type, object_id, original_name,
                     stored_name, uploaded_by, uploaded_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 """,
                 (
                     object_type,
@@ -310,7 +310,7 @@ def get_attachments(object_type, object_id):
         rows = conn.execute(
             """
             SELECT * FROM attachments
-            WHERE object_type = ? AND object_id = ?
+            WHERE object_type = %s AND object_id = %s
             ORDER BY uploaded_at DESC
             """,
             (object_type, str(object_id)),
@@ -547,7 +547,7 @@ def create_request(
 
         columns = ", ".join(available_values.keys())
         placeholders = ", ".join(
-            ["?"] * len(available_values)
+            ["%s"] * len(available_values)
         )
 
         conn.execute(
@@ -590,7 +590,7 @@ def change_payment_status(user, request_id, new_status,
 
     with db() as conn:
         row = conn.execute(
-            "SELECT * FROM requests WHERE id = ?",
+            "SELECT * FROM requests WHERE id = %s",
             (request_id,),
         ).fetchone()
 
@@ -673,7 +673,7 @@ def add_contract(user, contract_name, contract_number,
                 contract_number, counterparty,
                 contract_date, status
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 datetime.now().isoformat(timespec="seconds"),
