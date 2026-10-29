@@ -170,20 +170,60 @@ def create_user(username, password):
             """
             INSERT INTO users (
                 username,
-                password,
+                password_hash,
+                password_salt,
                 role,
                 department
             )
-            VALUES (%s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s)
             """,
             (
                 username,
-                password_hash + ":" + salt,
+                password_hash,
+                salt,
                 USER_ROLES[username],
                 "Общее",
             ),
         )
 
+
+def user_count():
+    with db() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS count FROM users"
+        ).fetchone()
+        return row["count"]
+
+def create_user(username, password):
+    if username not in USER_ROLES:
+        raise ValueError("Неизвестный логин.")
+
+    if len(password) < 10:
+        raise ValueError("Пароль должен содержать не менее 10 символов.")
+
+    salt = secrets.token_hex(16)
+    password_hash = hash_password(password, salt)
+
+    with db() as conn:
+        conn.execute(
+            """
+            INSERT INTO users (
+                username,
+                password_hash,
+                password_salt,
+                role,
+                department
+            )
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (
+                username,
+                password_hash,
+                salt,
+                USER_ROLES[username],
+                "Общее",
+            ),
+        )
     with db() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -375,15 +415,16 @@ def init_db():
         pass
 
     with db() as conn:
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS users ("
-            "id BIGSERIAL PRIMARY KEY, "
-            "username TEXT UNIQUE NOT NULL, "
-            "password_hash TEXT NOT NULL, "
-            "role TEXT NOT NULL, "
-            "department TEXT NOT NULL DEFAULT 'Общее'"
-            ")"
-        )
+        conn.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id BIGSERIAL PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        password_salt TEXT NOT NULL,
+        role TEXT NOT NULL,
+        department TEXT NOT NULL DEFAULT 'Общее'
+    )
+""")
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS audit_log (
