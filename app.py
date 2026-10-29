@@ -1433,13 +1433,9 @@ def show_audit_log(user):
         return
 
     with db() as conn:
-        rows = conn.execute(
-            """
-            SELECT * FROM audit_log
-            ORDER BY occurred_at DESC
-            LIMIT 500
-            """
-        ).fetchall()
+    rows = conn.execute(
+        "SELECT * FROM audit_log ORDER BY occurred_at DESC LIMIT 500"
+    ).fetchall()
 
     if rows:
         st.dataframe(
