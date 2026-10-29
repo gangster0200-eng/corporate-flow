@@ -1414,7 +1414,7 @@ def show_audit_log(user):
         return
 
     with db() as conn:
-    rows = conn.execute(
+        rows = conn.execute(
         "SELECT * FROM audit_log ORDER BY occurred_at DESC LIMIT 500"
     ).fetchall()
 
