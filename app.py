@@ -670,22 +670,13 @@ def add_contract(user, contract_name, contract_number,
             (
                 datetime.now().isoformat(timespec="seconds"),
                 user["username"],
-                contract_name,
-                contract_number,
-                counterparty,
-                contract_date,
-                "На согласовании",
-            ),
-        )
-            (
-                datetime.now().isoformat(timespec="seconds"),
-                user["username"],
                 contract_name.strip(),
                 contract_number.strip(),
                 counterparty.strip(),
                 contract_date.isoformat(),
                 "Согласование фин отделом",
             ),
+        )
 
         contract_id = conn.execute(
             "SELECT last_insert_rowid()"
