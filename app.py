@@ -169,18 +169,16 @@ def create_user(username, password):
         conn.execute(
             """
             INSERT INTO users (
-                username,
-                password_hash,
-                password_salt,
-                role,
-                department
+                "Username",
+                "Password",
+                "Role",
+                "Department"
             )
-            VALUES (%s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s)
             """,
             (
                 username,
-                password_hash,
-                salt,
+                password_hash + ":" + salt,
                 USER_ROLES[username],
                 "Общее",
             ),
@@ -201,10 +199,13 @@ def check_password(username, password):
     with db() as conn:
         row = conn.execute(
             """
-            SELECT username, role, department,
-                   password_hash, password_salt
+            SELECT
+                "Username" AS username,
+                "Password" AS password_value,
+                "Role" AS role,
+                "Department" AS department
             FROM users
-            WHERE username = %s
+            WHERE "Username" = %s
             """,
             (username,),
         ).fetchone()
@@ -212,12 +213,15 @@ def check_password(username, password):
     if row is None:
         return None
 
-    expected_hash = hash_password(password, row["password_salt"])
+    stored_value = row["password_value"]
 
-    if not secrets.compare_digest(
-        expected_hash,
-        row["password_hash"],
-    ):
+    if not stored_value or ":" not in stored_value:
+        return None
+
+    stored_hash, salt = stored_value.rsplit(":", 1)
+    expected_hash = hash_password(password, salt)
+
+    if not secrets.compare_digest(expected_hash, stored_hash):
         return None
 
     return {
@@ -225,6 +229,9 @@ def check_password(username, password):
         "role": row["role"],
         "department": row["department"],
     }
+
+
+
 
     calculated_hash = hash_password(password, row["password_salt"])
 
