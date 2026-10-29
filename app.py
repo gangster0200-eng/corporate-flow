@@ -168,17 +168,19 @@ def create_user(username, password):
     with db() as conn:
         conn.execute(
             """
-            INSERT INTO users (
+            INSERT INTO public.users (
                 username,
+                password,
                 password_hash,
                 password_salt,
                 role,
                 department
             )
-            VALUES (%s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s)
             """,
             (
                 username,
+                password_hash + ":" + salt,
                 password_hash,
                 salt,
                 USER_ROLES[username],
@@ -240,12 +242,13 @@ def check_password(username, password):
         row = conn.execute(
             """
             SELECT
-                "Username" AS username,
-                "Password" AS password_value,
-                "Role" AS role,
-                "Department" AS department
-            FROM users
-            WHERE "Username" = %s
+                username,
+                password_hash,
+                password_salt,
+                role,
+                department
+            FROM public.users
+            WHERE username = %s
             """,
             (username,),
         ).fetchone()
@@ -253,15 +256,12 @@ def check_password(username, password):
     if row is None:
         return None
 
-    stored_value = row["password_value"]
+    expected_hash = hash_password(password, row["password_salt"])
 
-    if not stored_value or ":" not in stored_value:
-        return None
-
-    stored_hash, salt = stored_value.rsplit(":", 1)
-    expected_hash = hash_password(password, salt)
-
-    if not secrets.compare_digest(expected_hash, stored_hash):
+    if not secrets.compare_digest(
+        expected_hash,
+        row["password_hash"],
+    ):
         return None
 
     return {
@@ -269,6 +269,8 @@ def check_password(username, password):
         "role": row["role"],
         "department": row["department"],
     }
+
+
 
 
 
