@@ -116,11 +116,6 @@ PAYMENT_STATUSES = [
 # БАЗА ДАННЫХ
 # =========================================================
 @contextmanager
-import psycopg
-import streamlit as st
-from psycopg.rows import dict_row
-
-@contextmanager
 def db():
     database_url = st.secrets["connections"]["postgresql"]["url"]
     with psycopg.connect(database_url, row_factory=dict_row) as conn:
