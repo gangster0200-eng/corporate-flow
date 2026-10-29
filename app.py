@@ -169,10 +169,10 @@ def create_user(username, password):
         conn.execute(
             """
             INSERT INTO users (
-                "Username",
-                "Password",
-                "Role",
-                "Department"
+                username,
+                password,
+                role,
+                department
             )
             VALUES (%s, %s, %s, %s)
             """,
