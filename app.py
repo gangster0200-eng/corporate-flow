@@ -166,6 +166,27 @@ def create_user(username, password):
     password_hash = hash_password(password, salt)
 
     with db() as conn:
+        conn.execute(
+            """
+            INSERT INTO users (
+                username,
+                password_hash,
+                password_salt,
+                role,
+                department
+            )
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (
+                username,
+                password_hash,
+                salt,
+                USER_ROLES[username],
+                "Общее",
+            ),
+        )
+
+    with db() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id BIGSERIAL PRIMARY KEY,
@@ -180,15 +201,30 @@ def check_password(username, password):
     with db() as conn:
         row = conn.execute(
             """
-            SELECT username, role, password_hash, password_salt
+            SELECT username, role, department,
+                   password_hash, password_salt
             FROM users
-            WHERE username = 
+            WHERE username = %s
             """,
             (username,),
         ).fetchone()
 
     if row is None:
         return None
+
+    expected_hash = hash_password(password, row["password_salt"])
+
+    if not secrets.compare_digest(
+        expected_hash,
+        row["password_hash"],
+    ):
+        return None
+
+    return {
+        "username": row["username"],
+        "role": row["role"],
+        "department": row["department"],
+    }
 
     calculated_hash = hash_password(password, row["password_salt"])
 
