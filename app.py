@@ -412,7 +412,7 @@ def init_db():
         request_columns = {
             row["name"]
             for row in conn.execute(
-                "PRAGMA table_info(requests)"
+               "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'requests'"
             ).fetchall()
         }
 
