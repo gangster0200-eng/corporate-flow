@@ -721,7 +721,7 @@ def change_payment_status(user, request_id, new_status,
 
 def get_requests():
     with db() as conn:
-        s = conn.execute(
+        rows = conn.execute(
             "SELECT * FROM requests ORDER BY created_at DESC"
         ).fetchall()
 
