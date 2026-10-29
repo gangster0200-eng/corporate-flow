@@ -629,7 +629,6 @@ def change_payment_status(user, request_id, new_status,
         )
 
         conn.execute(
-            """
             "UPDATE requests SET status=%s, payment_date=%s, payment_reference=%s, comments=%s WHERE id=%s"
             (
                 new_status,
