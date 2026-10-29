@@ -723,6 +723,14 @@ def approve_contract(user, contract_id):
             current_status,
         ),
     )
+        (
+            new_status,
+            user["username"],
+            datetime.now().isoformat(timespec="seconds"),
+            contract_id,
+            current_status,
+        ),
+    )
             (
                 "Согласован",
                 user["username"],
