@@ -441,11 +441,11 @@ def init_db():
 def audit(actor, action, object_type="", object_id="", details=""):
     with db() as conn:
         existing_columns = {
-        ["column_name"]
-        for  in conn.execute(
-            "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'requests'"
-        ).fetchall()
-    }
+    row["column_name"]
+    for row in conn.execute(
+        "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'requests'"
+    ).fetchall()
+}
 
         if "object_type" in columns and "object_id" in columns:
             conn.execute(
