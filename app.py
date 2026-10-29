@@ -331,30 +331,15 @@ def init_db():
         pass
 
     with db() as conn:
-    conn.execute("""
-            CREATE TABLE IF NOT EXISTS requests (
-                id TEXT PRIMARY KEY,
-                created_at TEXT NOT NULL,
-                created_by TEXT NOT NULL,
-                department TEXT NOT NULL,
-                counterparty TEXT NOT NULL,
-                amount DOUBLE PRECISION NOT NULL,
-                currency TEXT NOT NULL,
-                due_date TEXT NOT NULL,
-                expense_type TEXT NOT NULL,
-                purpose TEXT NOT NULL,
-                email TEXT,
-                phone TEXT,
-                contract_number TEXT,
-                status TEXT NOT NULL,
-                assigned_to TEXT,
-                payment_date TEXT,
-                payment_reference TEXT,
-                file_path TEXT,
-                file_original_name TEXT,
-                comments TEXT
-            )
-        """)
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS users ("
+            "id BIGSERIAL PRIMARY KEY, "
+            "username TEXT UNIQUE NOT NULL, "
+            "password_hash TEXT NOT NULL, "
+            "role TEXT NOT NULL, "
+            "department TEXT NOT NULL DEFAULT 'Общее'"
+            ")"
+        )
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS audit_log (
