@@ -114,26 +114,20 @@ PAYMENT_STATUSES = [
 # =========================================================
 
 @contextmanager
-def db():
-    import psycopg
-    from psycopg.rows import dict_row
+from contextlib import contextmanager
+import psycopg
+import streamlit as st
+from psycopg.rows import dict_row
 
+@contextmanager
+def db():
     database_url = st.secrets["connections"]["postgresql"]["url"]
 
-    conn = psycopg.connect(
+    with psycopg.connect(
         database_url,
         row_factory=dict_row,
-    )
-    return conn
-
-    try:
+    ) as conn:
         yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
 # Логины и соответствующие им роли
 USER_ROLES = {
     "initiator": "Инициатор",
