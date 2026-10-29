@@ -667,14 +667,17 @@ def add_contract(user, contract_name, contract_number,
                  counterparty, contract_date):
     with db() as conn:
         conn.execute(
-            """
-            INSERT INTO contracts (
-                created_at, created_by, contract_name,
-                contract_number, counterparty,
-                contract_date, status
-            )
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """,
+            "INSERT INTO contracts (created_at, created_by, contract_name, contract_number, counterparty, contract_date, status) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (
+                datetime.now().isoformat(timespec="seconds"),
+                user["username"],
+                contract_name,
+                contract_number,
+                counterparty,
+                contract_date,
+                "На согласовании",
+            ),
+        )
             (
                 datetime.now().isoformat(timespec="seconds"),
                 user["username"],
