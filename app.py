@@ -643,7 +643,7 @@ def get_requests():
             "SELECT * FROM requests ORDER BY created_at DESC"
         ).fetchall()
 
-    return [dict(row) for  in rows]
+    return [dict(row) for row in rows]
 
 # =========================================================
 # ДОГОВОРЫ
