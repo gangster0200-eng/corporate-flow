@@ -331,7 +331,7 @@ def init_db():
         pass
 
     with db() as conn:
-        conn.execute("""
+    conn.execute("""
             CREATE TABLE IF NOT EXISTS requests (
                 id TEXT PRIMARY KEY,
                 created_at TEXT NOT NULL,
