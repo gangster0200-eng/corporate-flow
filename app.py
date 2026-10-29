@@ -440,12 +440,12 @@ def init_db():
 
 def audit(actor, action, object_type="", object_id="", details=""):
     with db() as conn:
-        columns = {
-            row["name"]
-            for row in conn.execute(
-                "PRAGMA table_info(audit_log)"
-            ).fetchall()
-        }
+    existing_columns = {
+        row["column_name"]
+        for row in conn.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'requests'"
+        ).fetchall()
+    }
 
         if "object_type" in columns and "object_id" in columns:
             conn.execute(
@@ -519,12 +519,12 @@ def create_request(
     }
 
     with db() as conn:
-        existing_columns = {
-            row["name"]
-            for row in conn.execute(
-                "PRAGMA table_info(requests)"
-            ).fetchall()
-        }
+    existing_columns = {
+        row["column_name"]
+        for row in conn.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'requests'"
+        ).fetchall()
+    }
 
         available_values = {
             key: value
