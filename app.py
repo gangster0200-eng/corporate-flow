@@ -174,13 +174,6 @@ def create_user(username, password):
                 department TEXT NOT NULL DEFAULT 'Общее'
             )
         """)
-            (
-                username,
-                USER_ROLES[username],
-                password_hash,
-                salt,
-                datetime.now().isoformat(timespec="seconds"),
-            ),
 
 def check_password(username, password):
     with db() as conn:
