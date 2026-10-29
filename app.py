@@ -181,7 +181,6 @@ def create_user(username, password):
                 salt,
                 datetime.now().isoformat(timespec="seconds"),
             ),
-        )
 
 def check_password(username, password):
     with db() as conn:
