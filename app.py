@@ -885,7 +885,7 @@ def show_user_management(user):
     with db() as conn:
     rows = conn.execute(
         "SELECT * FROM audit_log ORDER BY occurred_at DESC LIMIT 500"
-    ).fetchall())
+    ).fetchall()
 
     if rows:
         st.dataframe(
