@@ -396,7 +396,6 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_requests_counterparty
             ON requests(counterparty)
         """)
-        )
 
         # Добавляем новые столбцы в существующую базу данных,
         # если их там ещё нет.
