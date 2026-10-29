@@ -701,29 +701,13 @@ def approve_contract(user, contract_id):
     result = conn.execute(
         "UPDATE contracts SET status = %s, approved_by = %s, approved_at = %s WHERE id = %s AND status = %s",
         (
-            new_status,
+            "Согласован",
             user["username"],
             datetime.now().isoformat(timespec="seconds"),
             contract_id,
-            current_status,
+            "Согласование фин отделом",
         ),
     )
-        (
-            new_status,
-            user["username"],
-            datetime.now().isoformat(timespec="seconds"),
-            contract_id,
-            current_status,
-        ),
-    )
-            (
-                "Согласован",
-                user["username"],
-                datetime.now().isoformat(timespec="seconds"),
-                contract_id,
-                "Согласование фин отделом",
-            ),
-        )
 
         if result.rowcount == 0:
             return False
