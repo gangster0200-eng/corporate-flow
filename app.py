@@ -521,10 +521,12 @@ def create_request(
     with db() as conn:
         existing_columns = {
         ["column_name"]
-        for  in conn.execute(
-            "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'requests'"
-        ).fetchall()
-    }
+        existing_columns = {
+    row["column_name"]
+    for row in conn.execute(
+        "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'requests'"
+    ).fetchall()
+}
 
         available_values = {
             key: value
