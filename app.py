@@ -898,13 +898,9 @@ def show_user_management(user):
     st.subheader("Существующие учётные записи")
 
     with db() as conn:
-        rows = conn.execute(
-            """
-            SELECT username, role, created_at
-            FROM users
-            ORDER BY username
-            """
-        ).fetchall()
+    rows = conn.execute(
+        "SELECT * FROM audit_log ORDER BY occurred_at DESC LIMIT 500"
+    ).fetchall())
 
     if rows:
         st.dataframe(
