@@ -410,7 +410,7 @@ def init_db():
         # Добавляем новые столбцы в существующую базу данных,
         # если их там ещё нет.
         request_columns = {
-            row["name"]
+            row["column_name"]
             for row in conn.execute(
                "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'requests'"
             ).fetchall()
@@ -441,8 +441,8 @@ def init_db():
 def audit(actor, action, object_type="", object_id="", details=""):
     with db() as conn:
         existing_columns = {
-        row["column_name"]
-        for row in conn.execute(
+        ["column_name"]
+        for  in conn.execute(
             "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'requests'"
         ).fetchall()
     }
@@ -520,8 +520,8 @@ def create_request(
 
     with db() as conn:
         existing_columns = {
-        row["column_name"]
-        for row in conn.execute(
+        ["column_name"]
+        for  in conn.execute(
             "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'requests'"
         ).fetchall()
     }
@@ -576,15 +576,15 @@ def change_payment_status(user, request_id, new_status,
         )
 
     with db() as conn:
-        row = conn.execute(
+         = conn.execute(
             "SELECT * FROM requests WHERE id = %s",
             (request_id,),
         ).fetchone()
 
-        if row is None:
+        if  is None:
             return False
 
-        current_status = row["status"]
+        current_status = ["status"]
 
         # Проверяем последовательность согласования.
         valid_transitions = {
@@ -612,17 +612,17 @@ def change_payment_status(user, request_id, new_status,
         payment_date = (
             date.today().isoformat()
             if new_status == "Оплачен"
-            else row["payment_date"]
+            else ["payment_date"]
         )
 
         conn.execute(
             "UPDATE requests SET status=%s, payment_date=%s, payment_reference=%s, comments=%s WHERE id=%s"
             (
                 new_status,
-                comment.strip() or row["comments"],
+                comment.strip() or ["comments"],
                 payment_date,
                 payment_reference.strip()
-                or row["payment_reference"],
+                or ["payment_reference"],
                 request_id,
             ),
         )
@@ -639,11 +639,11 @@ def change_payment_status(user, request_id, new_status,
 
 def get_requests():
     with db() as conn:
-        rows = conn.execute(
+        s = conn.execute(
             "SELECT * FROM requests ORDER BY created_at DESC"
         ).fetchall()
 
-    return [dict(row) for row in rows]
+    return [dict() for  in rows]
 
 # =========================================================
 # ДОГОВОРЫ
