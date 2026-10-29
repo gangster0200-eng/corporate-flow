@@ -505,12 +505,19 @@ def init_db():
 
 def audit(actor, action, object_type="", object_id="", details=""):
     with db() as conn:
-        existing_columns = {
-    row["column_name"]
-    for row in conn.execute(
-        "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'requests'"
-    ).fetchall()
-}
+        columns = {
+            row["column_name"]
+            for row in conn.execute(
+                """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'audit_log'
+                """
+            ).fetchall()
+        }
+
+        occurred_at = datetime.now().isoformat(timespec="seconds")
 
         if "object_type" in columns and "object_id" in columns:
             conn.execute(
@@ -522,7 +529,7 @@ def audit(actor, action, object_type="", object_id="", details=""):
                 VALUES (%s, %s, %s, %s, %s, %s)
                 """,
                 (
-                    datetime.now().isoformat(timespec="seconds"),
+                    occurred_at,
                     actor,
                     action,
                     object_type,
@@ -530,7 +537,7 @@ def audit(actor, action, object_type="", object_id="", details=""):
                     details,
                 ),
             )
-        else:
+        elif "request_id" in columns:
             conn.execute(
                 """
                 INSERT INTO audit_log (
@@ -540,13 +547,23 @@ def audit(actor, action, object_type="", object_id="", details=""):
                 VALUES (%s, %s, %s, %s, %s)
                 """,
                 (
-                    datetime.now().isoformat(timespec="seconds"),
+                    occurred_at,
                     actor,
                     action,
                     str(object_id),
                     details or object_type,
                 ),
             )
+        else:
+            raise RuntimeError(
+                "Структура таблицы audit_log не соответствует ожидаемой."
+            )
+
+
+
+
+
+
 # =========================================================
 # ПЛАТЕЖИ
 # =========================================================
