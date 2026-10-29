@@ -686,7 +686,6 @@ def add_contract(user, contract_name, contract_number,
                 contract_date.isoformat(),
                 "Согласование фин отделом",
             ),
-        )
 
         contract_id = conn.execute(
             "SELECT last_insert_rowid()"
