@@ -150,9 +150,10 @@ def user_exists(username):
 
 def user_count():
     with db() as conn:
-        return conn.execute(
-            "SELECT COUNT(*) FROM users"
-        ).fetchone()[0]
+        row = conn.execute(
+            "SELECT COUNT(*) AS count FROM users"
+        ).fetchone()
+        return row["count"]
 
 def create_user(username, password):
     if username not in USER_ROLES:
