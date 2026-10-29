@@ -165,14 +165,15 @@ def create_user(username, password):
     password_hash = hash_password(password, salt)
 
     with db() as conn:
-        conn.execute(
-            """
-            INSERT INTO users (
-                username, role, password_hash,
-                password_salt, created_at
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id BIGSERIAL PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL,
+                department TEXT NOT NULL DEFAULT 'Общее'
             )
-            VALUES (%s, %s, %s, %s, %s)
-            """,
+        """)
             (
                 username,
                 USER_ROLES[username],
