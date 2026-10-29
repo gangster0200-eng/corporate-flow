@@ -397,6 +397,29 @@ def init_db():
             ON requests(counterparty)
         """)
 
+
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS audit_log (
+                id BIGSERIAL PRIMARY KEY,
+                occurred_at TEXT NOT NULL,
+                actor TEXT NOT NULL,
+                action TEXT NOT NULL,
+                request_id TEXT,
+                details TEXT
+            )
+        """)
+
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_requests_status
+            ON requests(status)
+        """)
+
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_requests_counterparty
+            ON requests(counterparty)
+        """)
+
         # Добавляем новые столбцы в существующую базу данных,
         # если их там ещё нет.
         request_columns = {
