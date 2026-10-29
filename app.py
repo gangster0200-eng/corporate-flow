@@ -706,15 +706,23 @@ def approve_contract(user, contract_id):
         )
 
     with db() as conn:
-        result = conn.execute(
-            """
-            UPDATE contracts
-            SET status = ?,
-                approved_by = ?,
-                approved_at = ?
-            WHERE id = ?
-              AND status = ?
-            """,
+    result = conn.execute(
+        """
+        UPDATE contracts
+        SET status = %s,
+            approved_by = %s,
+            approved_at = %s
+        WHERE id = %s
+          AND status = %s
+        """,
+        (
+            new_status,
+            user["username"],
+            datetime.now().isoformat(timespec="seconds"),
+            contract_id,
+            current_status,
+        ),
+    )
             (
                 "Согласован",
                 user["username"],
