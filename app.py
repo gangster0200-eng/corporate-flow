@@ -576,13 +576,13 @@ def change_payment_status(user, request_id, new_status,
         )
 
     with db() as conn:
-         = conn.execute(
-            "SELECT * FROM requests WHERE id = %s",
-            (request_id,),
-        ).fetchone()
+    row = conn.execute(
+        "SELECT * FROM requests WHERE id = %s",
+        (request_id,),
+    ).fetchone()
 
-        if  is None:
-            return False
+    if row is None:
+        return False
 
         current_status = ["status"]
 
