@@ -114,8 +114,16 @@ PAYMENT_STATUSES = [
 
 @contextmanager
 def db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    import psycopg
+    from psycopg.rows import dict_row
+
+    database_url = st.secrets["connections"]["postgresql"]["url"]
+
+    conn = psycopg.connect(
+        database_url,
+        row_factory=dict_row,
+    )
+    return conn
 
     try:
         yield conn
@@ -335,76 +343,59 @@ def show_attachments(object_type, object_id):
                 f'Файл {file_info["original_name"]} не найден в хранилище.'
             )
 def init_db():
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+    try:
+        os.chmod(UPLOAD_DIR, 0o700)
+    except OSError:
+        pass
+
     with db() as conn:
-        conn.executescript(
-            """
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS requests (
                 id TEXT PRIMARY KEY,
                 created_at TEXT NOT NULL,
                 created_by TEXT NOT NULL,
+                department TEXT NOT NULL,
                 counterparty TEXT NOT NULL,
-                amount REAL NOT NULL,
+                amount DOUBLE PRECISION NOT NULL,
                 currency TEXT NOT NULL,
                 due_date TEXT NOT NULL,
+                expense_type TEXT NOT NULL,
                 purpose TEXT NOT NULL,
+                email TEXT,
+                phone TEXT,
                 contract_number TEXT,
                 status TEXT NOT NULL,
-                comments TEXT,
+                assigned_to TEXT,
                 payment_date TEXT,
-                payment_reference TEXT
-            );
+                payment_reference TEXT,
+                file_path TEXT,
+                file_original_name TEXT,
+                comments TEXT
+            )
+        """)
 
-            CREATE TABLE IF NOT EXISTS contracts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                created_at TEXT NOT NULL,
-                created_by TEXT NOT NULL,
-                contract_name TEXT NOT NULL,
-                contract_number TEXT,
-                counterparty TEXT NOT NULL,
-                contract_date TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT
-                    'Согласование фин отделом',
-                approved_by TEXT,
-                approved_at TEXT
-            );
-
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS audit_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id BIGSERIAL PRIMARY KEY,
                 occurred_at TEXT NOT NULL,
                 actor TEXT NOT NULL,
                 action TEXT NOT NULL,
-                object_type TEXT,
-                object_id TEXT,
+                request_id TEXT,
                 details TEXT
-            );
+            )
+        """)
 
-            CREATE TABLE IF NOT EXISTS users (
-                username TEXT PRIMARY KEY,
-                role TEXT NOT NULL,
-                password_hash TEXT NOT NULL,
-                password_salt TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS attachments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                object_type TEXT NOT NULL,
-                object_id TEXT NOT NULL,
-                original_name TEXT NOT NULL,
-                stored_name TEXT NOT NULL,
-                uploaded_by TEXT NOT NULL,
-                uploaded_at TEXT NOT NULL
-            );
-
+        conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_requests_status
-                ON requests(status);
+            ON requests(status)
+        """)
 
-            CREATE INDEX IF NOT EXISTS idx_contracts_status
-                ON contracts(status);
-
-            CREATE INDEX IF NOT EXISTS idx_attachments_object
-                ON attachments(object_type, object_id);
-            """
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_requests_counterparty
+            ON requests(counterparty)
+        """)
         )
 
         # Добавляем новые столбцы в существующую базу данных,
@@ -454,7 +445,7 @@ def audit(actor, action, object_type="", object_id="", details=""):
                     occurred_at, actor, action,
                     object_type, object_id, details
                 )
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 """,
                 (
                     datetime.now().isoformat(timespec="seconds"),
@@ -472,7 +463,7 @@ def audit(actor, action, object_type="", object_id="", details=""):
                     occurred_at, actor, action,
                     request_id, details
                 )
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s)
                 """,
                 (
                     datetime.now().isoformat(timespec="seconds"),
@@ -617,13 +608,7 @@ def change_payment_status(user, request_id, new_status,
 
         conn.execute(
             """
-            UPDATE requests
-            SET status = ?,
-                comments = ?,
-                payment_date = ?,
-                payment_reference = ?
-            WHERE id = ?
-            """,
+            "UPDATE requests SET status=%s, payment_date=%s, payment_reference=%s, comments=%s WHERE id=%s"
             (
                 new_status,
                 comment.strip() or row["comments"],
