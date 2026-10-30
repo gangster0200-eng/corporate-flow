@@ -726,6 +726,54 @@ def get_requests():
         ).fetchall()
 
     return [dict(row) for row in rows]
+def delete_payment_request(user, request_id):
+    # Удалять заявки может только пользователь admin
+    if user.get("username") != "admin":
+        raise PermissionError("У тебя нет прав на удаление заявок.")
+
+    # Получаем информацию о прикреплённых файлах
+    attachments = get_attachments("payment", request_id)
+
+    # Удаляем заявку и записи о её вложениях из базы данных
+    with db() as conn:
+        existing = conn.execute(
+            "SELECT id FROM requests WHERE id = %s",
+            (str(request_id),),
+        ).fetchone()
+
+        if not existing:
+            raise ValueError("Заявка не найдена.")
+
+        conn.execute(
+            """
+            DELETE FROM attachments
+            WHERE object_type = %s AND object_id = %s
+            """,
+            ("payment", str(request_id)),
+        )
+
+        conn.execute(
+            "DELETE FROM requests WHERE id = %s",
+            (str(request_id),),
+        )
+
+    # Удаляем файлы из локального хранилища
+    for attachment in attachments:
+        file_path = UPLOAD_DIR / attachment["stored_name"]
+        try:
+            if file_path.is_file():
+                file_path.unlink()
+        except OSError:
+            pass
+
+    # Записываем действие администратора в журнал
+    audit(
+        user["username"],
+        "payment_request_deleted",
+        "payment",
+        request_id,
+        "Платёжная заявка удалена администратором",
+    )
 
 # =========================================================
 # ДОГОВОРЫ
