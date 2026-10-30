@@ -1036,28 +1036,34 @@ def show_create_payment(user):
 
     with st.form("payment_form", clear_on_submit=True):
         counterparty = st.text_input("Контрагент")
+
         amount = st.number_input(
             "Сумма",
             min_value=0.01,
             value=1000.0,
             step=100.0,
         )
+
         currency = st.selectbox(
             "Валюта",
             ["RUB", "USD", "EUR", "CNY"],
         )
+
         cashless_label = st.radio(
             "Безналичная оплата",
             ["Да", "Нет"],
             horizontal=True,
             help="Выберите «Да» для безналичного платежа, «Нет» — для выдачи наличных.",
         )
+
         due_date = st.date_input(
             "Срок оплаты",
             value=date.today(),
         )
+
         purpose = st.text_area("Назначение платежа")
         contract_number = st.text_input("Номер договора")
+
         uploaded_files = st.file_uploader(
             "Прикрепить документы к платежу",
             type=[
@@ -1075,27 +1081,16 @@ def show_create_payment(user):
             st.error("Заполни контрагента и назначение платежа.")
         else:
             try:
-                create_request(
-                    user,
-                    counterparty,
-                    amount,
-                    currency,
-                    due_date,
-                    purpose,
-                    contract_number,
-                )
-
-                requests = get_requests()
                 request_id = create_request(
-                user=user,
-                counterparty=counterparty,
-                amount=amount,
-                currency=currency,
-                due_date=due_date,
-                purpose=purpose,
-                contract_number=contract_number,
-                cashless=(cashless_label == "Да"),
-            )
+                    user=user,
+                    counterparty=counterparty,
+                    amount=amount,
+                    currency=currency,
+                    due_date=due_date,
+                    purpose=purpose,
+                    contract_number=contract_number,
+                    cashless=(cashless_label == "Да"),
+                )
 
                 save_attachments(
                     user,
