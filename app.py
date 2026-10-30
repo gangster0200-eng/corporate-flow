@@ -1239,6 +1239,61 @@ def show_payments(user):
         st.write("**Назначение:**", request["purpose"])
         st.write("**Комментарий:**", request["comments"] or "—")
         show_attachments("payment", request["id"])
+        if user.get("username") == "admin":
+    if st.button(
+        "🗑️ Удалить заявку",
+        key=f'delete_payment_{request["id"]}',
+    ):
+        st.session_state[
+            f'confirm_delete_payment_{request["id"]}'
+        ] = True
+
+    if st.session_state.get(
+        f'confirm_delete_payment_{request["id"]}',
+        False,
+    ):
+        st.warning(
+            f'Ты действительно хочешь удалить заявку №{request["id"]}? '
+            'Восстановить её через приложение будет нельзя.'
+        )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button(
+                "Да, удалить",
+                key=f'confirm_yes_{request["id"]}',
+            ):
+                try:
+                    delete_payment_request(user, request["id"])
+
+                    st.session_state.pop(
+                        f'confirm_delete_payment_{request["id"]}',
+                        None,
+                    )
+
+                    st.success("Заявка удалена.")
+                    st.rerun()
+
+                except (ValueError, PermissionError) as error:
+                    st.error(str(error))
+
+        with col2:
+            if st.button(
+                "Отмена",
+                key=f'confirm_no_{request["id"]}',
+            ):
+                st.session_state.pop(
+                    f'confirm_delete_payment_{request["id"]}',
+                    None,
+                )
+                st.rerun()
+
+
+
+
+
+
 
     role = user["role"]
     status = request["status"]
