@@ -1239,7 +1239,7 @@ def show_payments(user):
         st.write("**Назначение:**", request["purpose"])
         st.write("**Комментарий:**", request["comments"] or "—")
         show_attachments("payment", request["id"])
-        if user.get("username") == "admin":
+    if user.get("username") == "admin":
     if st.button(
         "🗑️ Удалить заявку",
         key=f'delete_payment_{request["id"]}',
@@ -1288,6 +1288,11 @@ def show_payments(user):
                     None,
                 )
                 st.rerun()
+
+
+
+
+
 
 
 
