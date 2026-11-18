@@ -782,7 +782,7 @@ def get_requests(user):
     with db() as conn:
 
         # Инициатор видит только собственные заявки
-        if user.get("role") == "initiator":
+        if user.get("role") in ("Инициатор", "initiator"):
             rows = conn.execute(
                 """
                 SELECT * FROM requests
