@@ -642,10 +642,11 @@ def create_request(
     cashless=True,
 ):
     request_id = str(uuid.uuid4())
+    created_at = datetime.now().isoformat(timespec="seconds")
 
     values = {
         "id": request_id,
-        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "created_at": created_at,
         "created_by": user["username"],
         "counterparty": counterparty,
         "amount": amount,
@@ -665,11 +666,16 @@ def create_request(
 
     with db() as conn:
         existing_columns = {
-    row["column_name"]
-    for row in conn.execute(
-        "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'requests'"
-    ).fetchall()
-}
+            row["column_name"]
+            for row in conn.execute(
+                """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'requests'
+                """
+            ).fetchall()
+        }
 
         available_values = {
             key: value
@@ -683,11 +689,31 @@ def create_request(
         )
 
         conn.execute(
-            f"INSERT INTO requests ({columns}) VALUES ({placeholders})",
+            f"""
+            INSERT INTO requests ({columns})
+            VALUES ({placeholders})
+            """,
             list(available_values.values()),
         )
 
+    # Запись о создании заявки в журнале действий
+    audit(
+        user["username"],
+        "payment_request_created",
+        "payment",
+        request_id,
+        (
+            f"Создана платёжная заявка. "
+            f"Автор: {user.get('full_name') or user['username']}; "
+            f"Контрагент: {counterparty}; "
+            f"Сумма: {amount} {currency}; "
+            f"Дата создания: {created_at}"
+        ),
+    )
+
     return request_id
+
+
 
 
 
