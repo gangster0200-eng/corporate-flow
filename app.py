@@ -769,13 +769,16 @@ def change_payment_status(user, request_id, new_status,
         )
 
     audit(
-        user["username"],
-        "payment_status_changed",
-        "payment",
-        request_id,
-        f"{current_status} -> {new_status}",
-    )
-
+    user["username"],
+    "payment_request_created",
+    "payment",
+    request_id,
+    (
+        f"Создана заявка. Контрагент: {counterparty}; "
+        f"сумма: {amount} {currency}; "
+        f"срок оплаты: {due_date}"
+    ),
+)
     return True
 
 def get_requests(user):
