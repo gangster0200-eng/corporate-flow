@@ -1724,7 +1724,7 @@ def main_app():
         show_create_payment(user)
 
     elif page == "Заявки":
-        requests = get_requests(user)
+        show_payments(user)
 
     elif page == "Согласование договоров":
         show_contracts(user)
