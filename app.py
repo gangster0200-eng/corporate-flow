@@ -236,13 +236,18 @@ def create_user(username, password, full_name, role, department="Общее"):
     if len(password) < 10:
         raise ValueError("Пароль должен содержать не менее 10 символов.")
 
-    allowed_roles = [
-        "initiator",
-        "treasury",
-        "cfo",
-        "auditor",
-        "admin",
-    ]
+    allowed_roles = {
+    "Инициатор",
+    "Казначейство",
+    "Финансовый директор",
+    "Аудитор",
+    "Администратор",
+    "initiator",
+    "treasury",
+    "cfo",
+    "auditor",
+    "admin",
+}
 
     if role not in allowed_roles:
         raise ValueError("Неизвестная роль пользователя.")
