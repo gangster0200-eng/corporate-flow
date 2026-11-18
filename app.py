@@ -1116,7 +1116,7 @@ def show_user_management(user):
 # РАЗДЕЛ: ОБЗОР
 # =========================================================
 
-def show_dashboard():
+def show_dashboard(user):
     st.title("Рабочий стол")
 
     requests = get_requests(user)
@@ -1718,7 +1718,7 @@ def main_app():
     st.divider()
 
     if page == "Обзор":
-        show_dashboard()
+        show_dashboard(user)
 
     elif page == "Согласование платежа":
         show_create_payment(user)
