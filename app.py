@@ -423,12 +423,16 @@ def save_attachments(user, object_type, object_id, uploaded_files):
             )
 
         audit(
-            user["username"],
-            "file_uploaded",
-            object_type,
-            object_id,
-            original_name,
-        )
+    user["username"],
+    "payment_request_created",
+    "payment",
+    request_id,
+    (
+        f"Создана заявка. Контрагент: {counterparty}; "
+        f"сумма: {amount} {currency}; "
+        f"срок оплаты: {due_date}"
+    ),
+)
 
 def get_attachments(object_type, object_id):
     with db() as conn:
