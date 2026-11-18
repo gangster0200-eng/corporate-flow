@@ -1256,7 +1256,7 @@ def show_create_payment(user):
 def show_payments(user):
     st.title("Реестр заявок")
 
-    requests = get_requests()
+    requests = get_requests(user)
 
     search = st.text_input("Поиск по номеру или контрагенту")
     status_filter = st.multiselect(
@@ -1724,7 +1724,7 @@ def main_app():
         show_create_payment(user)
 
     elif page == "Заявки":
-        show_payments(user)
+        requests = get_requests(user)
 
     elif page == "Согласование договоров":
         show_contracts(user)
