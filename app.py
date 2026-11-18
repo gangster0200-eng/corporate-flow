@@ -155,36 +155,58 @@ def user_count():
         ).fetchone()
         return row["count"]
 
-def create_user(username, password):
-    if username not in USER_ROLES:
-        raise ValueError("Неизвестный логин.")
+def create_user(username, password, full_name, role, department="Общее"):
+    username = username.strip().lower()
+    full_name = full_name.strip()
+
+    if not username or not full_name:
+        raise ValueError("Заполни логин и ФИО сотрудника.")
 
     if len(password) < 10:
         raise ValueError("Пароль должен содержать не менее 10 символов.")
+
+    allowed_roles = {
+        "Инициатор",
+        "Казначейство",
+        "Финансовый директор",
+        "Аудитор",
+        "Администратор",
+    }
+
+    if role not in allowed_roles:
+        raise ValueError("Неизвестная роль пользователя.")
 
     salt = secrets.token_hex(16)
     password_hash = hash_password(password, salt)
 
     with db() as conn:
+        existing = conn.execute(
+            "SELECT id FROM public.users WHERE username = %s",
+            (username,),
+        ).fetchone()
+
+        if existing:
+            raise ValueError("Такой логин уже существует.")
+
         conn.execute(
             """
             INSERT INTO public.users (
                 username,
-                password,
                 password_hash,
                 password_salt,
                 role,
-                department
+                department,
+                full_name
             )
             VALUES (%s, %s, %s, %s, %s, %s)
             """,
             (
                 username,
-                password_hash + ":" + salt,
                 password_hash,
                 salt,
-                USER_ROLES[username],
-                "Общее",
+                role,
+                department,
+                full_name,
             ),
         )
 
@@ -196,48 +218,67 @@ def user_count():
         ).fetchone()
         return row["count"]
 
-def create_user(username, password):
-    if username not in USER_ROLES:
-        raise ValueError("Неизвестный логин.")
+def create_user(username, password, full_name, role, department="Общее"):
+    username = username.strip().lower()
+    full_name = full_name.strip()
+
+    if not username:
+        raise ValueError("Укажи логин пользователя.")
+
+    if not full_name:
+        raise ValueError("Укажи имя и фамилию сотрудника.")
 
     if len(password) < 10:
         raise ValueError("Пароль должен содержать не менее 10 символов.")
+
+    allowed_roles = [
+        "initiator",
+        "treasury",
+        "cfo",
+        "auditor",
+        "admin",
+    ]
+
+    if role not in allowed_roles:
+        raise ValueError("Неизвестная роль пользователя.")
 
     salt = secrets.token_hex(16)
     password_hash = hash_password(password, salt)
 
     with db() as conn:
+        existing = conn.execute(
+            "SELECT id FROM users WHERE username = %s",
+            (username,),
+        ).fetchone()
+
+        if existing:
+            raise ValueError("Пользователь с таким логином уже существует.")
+
         conn.execute(
             """
-            INSERT INTO users (
+            INSERT INTO public.users (
                 username,
                 password_hash,
                 password_salt,
                 role,
-                department
+                department,
+                full_name
             )
-            VALUES (%s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s)
             """,
             (
                 username,
                 password_hash,
                 salt,
-                USER_ROLES[username],
-                "Общее",
+                role,
+                department,
+                full_name,
             ),
         )
-    with db() as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id BIGSERIAL PRIMARY KEY,
-                username TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                role TEXT NOT NULL,
-                department TEXT NOT NULL DEFAULT 'Общее'
-            )
-        """)
 
 def check_password(username, password):
+    username = username.strip().lower()
+
     with db() as conn:
         row = conn.execute(
             """
@@ -246,7 +287,8 @@ def check_password(username, password):
                 password_hash,
                 password_salt,
                 role,
-                department
+                department,
+                full_name
             FROM public.users
             WHERE username = %s
             """,
@@ -266,9 +308,16 @@ def check_password(username, password):
 
     return {
         "username": row["username"],
+        "full_name": row["full_name"] or row["username"],
         "role": row["role"],
         "department": row["department"],
     }
+
+
+
+
+
+
 
 
 
@@ -719,11 +768,28 @@ def change_payment_status(user, request_id, new_status,
 
     return True
 
-def get_requests():
+def get_requests(user):
     with db() as conn:
-        rows = conn.execute(
-            "SELECT * FROM requests ORDER BY created_at DESC"
-        ).fetchall()
+
+        # Инициатор видит только собственные заявки
+        if user.get("role") == "initiator":
+            rows = conn.execute(
+                """
+                SELECT * FROM requests
+                WHERE created_by = %s
+                ORDER BY created_at DESC
+                """,
+                (user["username"],),
+            ).fetchall()
+
+        # Остальные роли видят все заявки
+        else:
+            rows = conn.execute(
+                """
+                SELECT * FROM requests
+                ORDER BY created_at DESC
+                """
+            ).fetchall()
 
     return [dict(row) for row in rows]
 def delete_payment_request(user, request_id):
@@ -883,11 +949,13 @@ def login():
             elif len(password1) < 10:
                 st.error("Пароль должен содержать не менее 10 символов.")
             else:
-                create_user("admin", password1)
-                st.success(
-                    "Администратор создан. Теперь войди с логином admin."
-                )
-                st.rerun()
+                create_user(
+    "admin",
+    password1,
+    "Администратор",
+    "Администратор",
+    "Общее",
+)
 
         return
 
@@ -949,32 +1017,28 @@ def show_user_management(user):
 
     st.subheader("Создать учётную запись")
 
+    roles = [
+        "Инициатор",
+        "Казначейство",
+        "Финансовый директор",
+        "Аудитор",
+        "Администратор",
+    ]
+
     with st.form("create_user_form"):
-        available_users = [
-            username
-            for username in USER_ROLES
-            if not user_exists(username)
-        ]
-
-        if not available_users:
-            st.info("Все предусмотренные учётные записи уже созданы.")
-            return
-
-        username = st.selectbox(
-            "Должность / логин",
-            available_users,
-            format_func=lambda name: (
-                f"{USER_ROLES[name]} ({name})"
-            ),
+        full_name = st.text_input("ФИО сотрудника")
+        username = st.text_input("Логин").strip().lower()
+        department = st.text_input(
+            "Подразделение",
+            value="Общее",
         )
-        password1 = st.text_input(
-            "Пароль",
-            type="password",
-        )
+        role = st.selectbox("Роль", roles)
+        password1 = st.text_input("Пароль", type="password")
         password2 = st.text_input(
             "Повтори пароль",
             type="password",
         )
+
         submitted = st.form_submit_button("Создать пользователя")
 
     if submitted:
@@ -983,26 +1047,46 @@ def show_user_management(user):
         elif len(password1) < 10:
             st.error("Пароль должен содержать не менее 10 символов.")
         else:
-            create_user(username, password1)
-            audit(
-                user["username"],
-                "user_created",
-                "user",
-                username,
-            )
-            st.success(
-                f"Создан пользователь {username} "
-                f"({USER_ROLES[username]})."
-            )
-            st.rerun()
+            try:
+                create_user(
+                    username,
+                    password1,
+                    full_name,
+                    role,
+                    department,
+                )
+
+                audit(
+                    user["username"],
+                    "user_created",
+                    "user",
+                    username,
+                    f"{full_name}, роль: {role}",
+                )
+
+                st.success(
+                    f"Учётная запись сотрудника {full_name} создана."
+                )
+                st.rerun()
+
+            except ValueError as error:
+                st.error(str(error))
 
     st.divider()
     st.subheader("Существующие учётные записи")
 
     with db() as conn:
         rows = conn.execute(
-        "SELECT * FROM audit_log ORDER BY occurred_at DESC LIMIT 500"
-    ).fetchall()
+            """
+            SELECT
+                username,
+                full_name,
+                role,
+                department
+            FROM public.users
+            ORDER BY full_name, username
+            """
+        ).fetchall()
 
     if rows:
         st.dataframe(
@@ -1010,6 +1094,13 @@ def show_user_management(user):
             use_container_width=True,
             hide_index=True,
         )
+    else:
+        st.info("Пользователей пока нет.")
+
+
+
+
+
 
 
 
@@ -1028,7 +1119,7 @@ def show_user_management(user):
 def show_dashboard():
     st.title("Рабочий стол")
 
-    requests = get_requests()
+    requests = get_requests(user)
     contracts = get_contracts()
 
     c1, c2, c3, c4 = st.columns(4)
