@@ -1242,6 +1242,9 @@ def show_create_payment(user):
     index=None,
     placeholder="Выберите город",
 )
+    if submitted:
+        if not city:
+            st.error("Выберите город размещения заявки.")
         
         amount = st.number_input(
             "Сумма",
@@ -1285,8 +1288,6 @@ def show_create_payment(user):
     if submitted:
         if not counterparty.strip() or not purpose.strip():
             st.error("Заполни контрагента и назначение платежа.")
-        if not city:
-            st.error("Выберите город размещения заявки.")
     return    
         else:
             try:
