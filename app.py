@@ -738,8 +738,13 @@ def create_request(
 
 
 
-def change_payment_status(user, request_id, new_status,
-                          comment="", payment_reference=""):
+def change_payment_status(
+    user,
+    request_id,
+    new_status,
+    comment="",
+    payment_reference="",
+):
     allowed = {
         "Казначейство": {
             "На согласовании финансового директора",
@@ -764,16 +769,19 @@ def change_payment_status(user, request_id, new_status,
 
     with db() as conn:
         row = conn.execute(
-            "SELECT * FROM requests WHERE id = %s",
+            """
+            SELECT *
+            FROM public.requests
+            WHERE id = %s
+            """,
             (request_id,),
         ).fetchone()
 
         if row is None:
             return False
 
-        current_status = ["status"]
+        current_status = row["status"]
 
-        # Проверяем последовательность согласования.
         valid_transitions = {
             "На проверке казначейства": {
                 "На согласовании финансового директора",
@@ -799,33 +807,55 @@ def change_payment_status(user, request_id, new_status,
         payment_date = (
             date.today().isoformat()
             if new_status == "Оплачен"
-            else ["payment_date"]
+            else row["payment_date"]
+        )
+
+        final_reference = (
+            payment_reference.strip()
+            if payment_reference.strip()
+            else row["payment_reference"]
+        )
+
+        final_comment = (
+            comment.strip()
+            if comment.strip()
+            else row["comments"]
         )
 
         conn.execute(
-            "UPDATE requests SET status=%s, payment_date=%s, payment_reference=%s, comments=%s WHERE id=%s"
+            """
+            UPDATE public.requests
+            SET
+                status = %s,
+                payment_date = %s,
+                payment_reference = %s,
+                comments = %s
+            WHERE id = %s
+            """,
             (
                 new_status,
-                comment.strip() or ["comments"],
                 payment_date,
-                payment_reference.strip()
-                or ["payment_reference"],
+                final_reference,
+                final_comment,
                 request_id,
             ),
         )
 
     audit(
-    user["username"],
-    "payment_request_created",
-    "payment",
-    request_id,
-    (
-        f"Создана заявка. Контрагент: {counterparty}; "
-        f"сумма: {amount} {currency}; "
-        f"срок оплаты: {due_date}"
-    ),
-)
+        user["username"],
+        "payment_status_changed",
+        "payment",
+        request_id,
+        (
+            f"Статус изменён: {current_status} → {new_status}. "
+            f"Комментарий: {comment.strip() or 'Не указан'}"
+        ),
+    )
+
     return True
+
+
+
 
 def get_requests(user):
     with db() as conn:
