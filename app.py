@@ -1077,12 +1077,12 @@ def show_user_management(user):
     st.subheader("Создать учётную запись")
 
     roles = [
-    "Инициатор",
-    "Казначейство",
-    "Финансовый директор",
-    "Финансовый менеджер (безналичные платежи)",
-    "Финансовый менеджер (наличные платежи)",
-    "Администратор",
+        "Инициатор",
+        "Казначейство",
+        "Финансовый директор",
+        "Финансовый менеджер (безналичные платежи)",
+        "Финансовый менеджер (наличные платежи)",
+        "Администратор",
     ]
 
     with st.form("create_user_form"):
@@ -1102,7 +1102,11 @@ def show_user_management(user):
         submitted = st.form_submit_button("Создать пользователя")
 
     if submitted:
-        if password1 != password2:
+        if not full_name.strip():
+            st.error("Укажи ФИО сотрудника.")
+        elif not username:
+            st.error("Укажи логин.")
+        elif password1 != password2:
             st.error("Пароли не совпадают.")
         elif len(password1) < 10:
             st.error("Пароль должен содержать не менее 10 символов.")
@@ -1149,11 +1153,142 @@ def show_user_management(user):
         ).fetchall()
 
     if rows:
+        users = [dict(row) for row in rows]
+
         st.dataframe(
-            [dict(row) for row in rows],
+            users,
             use_container_width=True,
             hide_index=True,
         )
+
+        st.divider()
+        st.subheader("Удаление учётной записи")
+
+        deletable_users = [
+            u for u in users
+            if u["username"] != user["username"]
+        ]
+
+        if not deletable_users:
+            st.info("Нет других пользователей для удаления.")
+            return
+
+        selected_user = st.selectbox(
+            "Выбери сотрудника",
+            deletable_users,
+            format_func=lambda u: (
+                f'{u["full_name"] or u["username"]} '
+                f'({u["username"]}) — {u["role"]}'
+            ),
+        )
+
+        st.warning(
+            "Удаление учётной записи необратимо. "
+            "Сначала убедись, что выбран правильный сотрудник."
+        )
+
+        target_username = selected_user["username"]
+        confirm_key = f"confirm_delete_user_{target_username}"
+
+        if st.button(
+            "Удалить пользователя",
+            key=f"delete_user_{target_username}",
+        ):
+            st.session_state[confirm_key] = True
+
+        if st.session_state.get(confirm_key, False):
+            st.error(
+                f'Подтверди удаление сотрудника '
+                f'{selected_user["full_name"] or target_username} '
+                f'({target_username}).'
+            )
+
+            col_yes, col_no = st.columns(2)
+
+            with col_yes:
+                if st.button(
+                    "Да, удалить",
+                    key=f"confirm_delete_user_yes_{target_username}",
+                ):
+                    try:
+                        with db() as conn
+
+
+target = conn.execute(
+                                """
+                                SELECT username, role
+                                FROM public.users
+                                WHERE username = %s
+                                """,
+                                (target_username,),
+                            ).fetchone()
+
+                            if target is None:
+                                raise ValueError(
+                                    "Пользователь уже отсутствует в базе."
+                                )
+
+                            if target["username"] == user["username"]:
+                                raise PermissionError(
+                                    "Нельзя удалить собственную учётную запись."
+                                )
+
+                            if target["role"] == "Администратор":
+                                admin_count = conn.execute(
+                                    """
+                                    SELECT COUNT(*) AS total
+                                    FROM public.users
+                                    WHERE role = 'Администратор'
+                                    """
+                                ).fetchone()["total"]
+
+                                if admin_count <= 1:
+                                    raise PermissionError(
+                                        "Нельзя удалить последнего администратора."
+                                    )
+
+                            conn.execute(
+                                """
+                                DELETE FROM public.users
+                                WHERE username = %s
+                                """,
+                                (target_username,),
+                            )
+
+                        audit(
+                            user["username"],
+                            "user_deleted",
+                            "user",
+                            target_username,
+                            (
+                                f'Удалён пользователь: '
+                                f'{selected_user["full_name"]}, '
+                                f'роль: {selected_user["role"]}'
+                            ),
+                        )
+
+                        st.session_state.pop(confirm_key, None)
+                        st.success("Учётная запись удалена.")
+                        st.rerun()
+
+                    except (ValueError, PermissionError) as error:
+                        st.error(str(error))
+
+                    except Exception as error:
+                        st.error(
+                            "Не удалось удалить пользователя. "
+                            "Возможно, с ним связаны записи в базе данных. "
+                            f"Подробности: {error}"
+                        )
+
+            with col_no:
+                if st.button(
+                    "Отмена",
+                    key=f"confirm_delete_user_no_{target_username}",
+                ):
+                    st.session_state.pop(confirm_key, None)
+                    st.rerun()
+
     else:
         st.info("Пользователей пока нет.")
 
