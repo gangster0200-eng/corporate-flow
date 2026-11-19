@@ -1729,9 +1729,9 @@ def show_payments(user):
                             )
 
                         if current_request["created_by"] != user["username"]:
-    raise PermissionError(
-        "Можно редактировать только собственные заявки."
-    )
+                            raise PermissionError(
+                                "Можно редактировать только собственные заявки."
+                            )
                         if current_request["status"] not in (
                             "На доработке",
                             "Отклонён",
