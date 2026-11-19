@@ -1402,7 +1402,7 @@ def show_payments(user):
             "**Сумма:**",
             f'{request["amount"]:,.2f} {request["currency"]}',
         )
-        st.write( "**Город:**", request.get("city") or "Не указан",
+        st.write( "**Город:**", request.get("city") or "Не указан"),
         st.write("**Срок оплаты:**", request["due_date"])
         st.write("**Договор:**", request["contract_number"] or "—")
 
