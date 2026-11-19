@@ -1237,15 +1237,12 @@ def show_create_payment(user):
         counterparty = st.text_input("Контрагент")
 
         city = st.selectbox(
-    "Город размещения заявки",
-    CITIES,
-    index=None,
-    placeholder="Выберите город",
-)
-    if submitted:
-        if not city:
-            st.error("Выберите город размещения заявки.")
-        
+            "Город размещения заявки",
+            CITIES,
+            index=None,
+            placeholder="Выберите город",
+        )
+
         amount = st.number_input(
             "Сумма",
             min_value=0.01,
@@ -1292,37 +1289,40 @@ def show_create_payment(user):
         elif not city:
             st.error("Выбери город размещения заявки.")
 
-    else:
-        try:
-            request_id = create_request(
-                user=user,
-                counterparty=counterparty,
-                amount=amount,
-                currency=currency,
-                due_date=due_date,
-                purpose=purpose,
-                contract_number=contract_number,
-                cashless=(cashless_label == "Да"),
-                city=city,
-            )
+        else:
+            try:
+                request_id = create_request(
+                    user=user,
+                    counterparty=counterparty,
+                    amount=amount,
+                    currency=currency,
+                    due_date=due_date,
+                    purpose=purpose,
+                    contract_number=contract_number,
+                    cashless=(cashless_label == "Да"),
+                    city=city,
+                )
 
-            save_attachments(
-                user,
-                "payment",
-                request_id,
-                uploaded_files,
-            )
+                save_attachments(
+                    user,
+                    "payment",
+                    request_id,
+                    uploaded_files,
+                )
 
-            st.success(
-                f"Заявка {request_id} создана и отправлена в казначейство."
-            )
-            st.rerun()
+                st.success(
+                    f"Заявка {request_id} создана и отправлена в казначейство."
+                )
+                st.rerun()
 
-        except (ValueError, OSError) as error:
-            st.error(str(error))
+            except (ValueError, OSError) as error:
+                st.error(str(error))
 
-        except Exception as error:
-            st.error(f"Не удалось создать заявку: {error}")
+            except Exception as error:
+                st.error(f"Не удалось создать заявку: {error}")
+
+
+
 
 
 
