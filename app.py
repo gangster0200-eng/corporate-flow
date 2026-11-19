@@ -1211,15 +1211,15 @@ def show_user_management(user):
                     key=f"confirm_delete_user_yes_{target_username}",
                 ):
                     try:
-                        with db() as conn:
-    target = conn.execute(
-        """
-        SELECT username, role
-        FROM public.users
-        WHERE username = %s
-        """,
-        (target_username,),
-    ).fetchone()
+            with db() as conn:
+                target = conn.execute(
+                    """
+                    SELECT username, role
+                    FROM public.users
+                    WHERE username = %s
+                    """,
+                    (target_username,),
+                ).fetchone()
 
                             if target is None:
                                 raise ValueError(
