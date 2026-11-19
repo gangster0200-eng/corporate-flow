@@ -1286,10 +1286,12 @@ def show_create_payment(user):
         submitted = st.form_submit_button("Создать заявку")
 
     if submitted:
-        if not counterparty.strip() or not purpose.strip():
+    if not counterparty.strip() or not purpose.strip():
         st.error("Заполни контрагента и назначение платежа.")
+
     elif not city:
         st.error("Выбери город размещения заявки.")
+
     else:
         try:
             request_id = create_request(
@@ -1304,26 +1306,26 @@ def show_create_payment(user):
                 city=city,
             )
 
-            # Здесь оставь существующий код сохранения вложений,
-            # сообщения об успешном создании и st.rerun()
+            save_attachments(
+                user,
+                "payment",
+                request_id,
+                uploaded_files,
+            )
+
+            st.success(
+                f"Заявка {request_id} создана и отправлена в казначейство."
+            )
+            st.rerun()
+
+        except (ValueError, OSError) as error:
+            st.error(str(error))
 
         except Exception as error:
             st.error(f"Не удалось создать заявку: {error}")
 
-                save_attachments(
-                    user,
-                    "payment",
-                    request_id,
-                    uploaded_files,
-                )
 
-                st.success(
-                    f"Заявка {request_id} создана и отправлена в казначейство."
-                )
-                st.rerun()
 
-            except (ValueError, OSError) as error:
-                st.error(str(error))
 
 
 
