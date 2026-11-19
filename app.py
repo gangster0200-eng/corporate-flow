@@ -1286,11 +1286,11 @@ def show_create_payment(user):
         submitted = st.form_submit_button("Создать заявку")
 
     if submitted:
-    if not counterparty.strip() or not purpose.strip():
-        st.error("Заполни контрагента и назначение платежа.")
+        if not counterparty.strip() or not purpose.strip():
+            st.error("Заполни контрагента и назначение платежа.")
 
-    elif not city:
-        st.error("Выбери город размещения заявки.")
+        elif not city:
+            st.error("Выбери город размещения заявки.")
 
     else:
         try:
