@@ -1340,21 +1340,35 @@ def show_payments(user):
     requests = get_requests(user)
 
     search = st.text_input("Поиск по номеру или контрагенту")
-    status_filter = st.multiselect(
-        "Фильтр по статусу",
-        PAYMENT_STATUSES,
-    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        status_filter = st.multiselect(
+            "Фильтр по статусу",
+            PAYMENT_STATUSES,
+        )
+
+    with col2:
+        city_filter = st.selectbox(
+            "Фильтр по городу",
+            ["Все города"] + CITIES,
+        )
 
     filtered = [
         r for r in requests
         if (
             not search
-            or search.lower() in r["id"].lower()
-            or search.lower() in r["counterparty"].lower()
+            or search.lower() in str(r.get("id", "")).lower()
+            or search.lower() in str(r.get("counterparty", "")).lower()
         )
         and (
             not status_filter
-            or r["status"] in status_filter
+            or r.get("status") in status_filter
+        )
+        and (
+            city_filter == "Все города"
+            or (r.get("city") or "Не указан") == city_filter
         )
     ]
 
@@ -1366,9 +1380,10 @@ def show_payments(user):
         [
             {
                 "Номер": r["id"],
-                "Дата создания": r["created_at"][:10],
+                "Дата создания": str(r["created_at"])[:10],
                 "Инициатор": r["created_by"],
                 "Контрагент": r["counterparty"],
+                "Город": r.get("city") or "Не указан",
                 "Сумма": f'{r["amount"]:,.2f} {r["currency"]}',
                 "Срок оплаты": r["due_date"],
                 "Статус": r["status"],
@@ -1402,7 +1417,7 @@ def show_payments(user):
             "**Сумма:**",
             f'{request["amount"]:,.2f} {request["currency"]}',
         )
-        st.write( "**Город:**", request.get("city") or "Не указан"),
+        st.write("**Город:**", request.get("city") or "Не указан")
         st.write("**Срок оплаты:**", request["due_date"])
         st.write("**Договор:**", request["contract_number"] or "—")
 
@@ -1412,49 +1427,51 @@ def show_payments(user):
         st.write("**Назначение:**", request["purpose"])
         st.write("**Комментарий:**", request["comments"] or "—")
 
-        show_attachments("payment", request["id"])
+    show_attachments("payment", request["id"])
 
-        if user.get("username") == "admin":
-            request_id = request["id"]
-            confirm_key = f"confirm_delete_payment_{request_id}"
+    if user.get("username") == "admin":
+        request_id = request["id"]
+        confirm_key = f"confirm_delete_payment_{request_id}"
 
-            if st.button(
-                "🗑️ Удалить заявку",
-                key=f"delete_payment_{request_id}",
-            ):
-                st.session_state[confirm_key] = True
+        if st.button(
+            "🗑️ Удалить заявку",
+            key=f"delete_payment_{request_id}",
+        ):
+            st.session_state[confirm_key] = True
 
-            if st.session_state.get(confirm_key, False):
-                st.warning(
-                    f"Ты действительно хочешь удалить заявку №{request_id}? "
-                    "Восстановить её через приложение будет нельзя."
-                )
+        if st.session_state.get(confirm_key, False):
+            st.warning(
+                f"Ты действительно хочешь удалить заявку №{request_id}? "
+                "Восстановить её через приложение будет нельзя."
+            )
 
-                col_confirm, col_cancel = st.columns(2)
+            col_confirm, col_cancel = st.columns(2)
 
-                with col_confirm:
-                    if st.button(
-                        "Да, удалить",
-                        key=f"confirm_yes_{request_id}",
-                    ):
-                        try:
-                            delete_payment_request(user, request_id)
+            with col_confirm:
+                if st.button(
+                    "Да, удалить",
+                    key=f"confirm_yes_{request_id}",
+                ):
+                    try:
+                        delete_payment_request(user, request_id)
 
-                            st.session_state.pop(confirm_key, None)
-
-                            st.success("Заявка удалена.")
-                            st.rerun()
-
-                        except (ValueError, PermissionError) as error:
-                            st.error(str(error))
-
-                with col_cancel:
-                    if st.button(
-                        "Отмена",
-                        key=f"confirm_no_{request_id}",
-                    ):
                         st.session_state.pop(confirm_key, None)
+
+                        st.success("Заявка удалена.")
                         st.rerun()
+
+                    except (ValueError, PermissionError) as error:
+                        st.error(str(error))
+
+            with col_cancel:
+                if st.button(
+                    "Отмена",
+                    key=f"confirm_no_{request_id}",
+                ):
+                    st.session_state.pop(confirm_key, None)
+                    st.rerun()
+
+
 
 
 
