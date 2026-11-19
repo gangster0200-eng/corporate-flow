@@ -1818,7 +1818,7 @@ def show_payments(user):
                 except Exception as error:
                     st.error(
                         f"Не удалось повторно отправить заявку: {error}"
-                    )_req
+                    )
 
     if user.get("username") == "admin":
         request_id = request["id"]
