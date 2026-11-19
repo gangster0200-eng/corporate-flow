@@ -110,6 +110,22 @@ PAYMENT_STATUSES = [
     "Оплачен",
     "Выдано",
 ]
+CITIES = [
+    "Санкт-Петербург",
+    "Москва",
+    "Нижний Новгород",
+    "Красноярск",
+    "Тюмень",
+    "Волгоград",
+    "Саратов",
+    "Ростов-на-Дону",
+    "Казань",
+    "Краснодар",
+    "Екатеринбург",
+    "Пермь",
+    "Новосибирск",
+    "Уфа",
+]
 
 # =========================================================
 # БАЗА ДАННЫХ
@@ -638,6 +654,7 @@ def create_request(
     purpose,
     contract_number,
     cashless=True,
+    city="Не указан",
 ):
     request_id = str(uuid.uuid4())
     created_at = datetime.now().isoformat(timespec="seconds")
@@ -660,6 +677,7 @@ def create_request(
         "expense_type": "Не указан",
         "department": user.get("department", "Не указан"),
         "assigned_to": "Казначейство",
+        "city": city,
     }
 
     with db() as conn:
@@ -1218,6 +1236,13 @@ def show_create_payment(user):
     with st.form("payment_form", clear_on_submit=True):
         counterparty = st.text_input("Контрагент")
 
+        city = st.selectbox(
+    "Город размещения заявки",
+    CITIES,
+    index=None,
+    placeholder="Выберите город",
+)
+        
         amount = st.number_input(
             "Сумма",
             min_value=0.01,
@@ -1260,6 +1285,9 @@ def show_create_payment(user):
     if submitted:
         if not counterparty.strip() or not purpose.strip():
             st.error("Заполни контрагента и назначение платежа.")
+        if not city:
+            st.error("Выберите город размещения заявки.")
+    return    
         else:
             try:
                 request_id = create_request(
@@ -1271,6 +1299,7 @@ def show_create_payment(user):
                     purpose=purpose,
                     contract_number=contract_number,
                     cashless=(cashless_label == "Да"),
+                    city=city,
                 )
 
                 save_attachments(
@@ -1363,6 +1392,9 @@ def show_payments(user):
             "**Сумма:**",
             f'{request["amount"]:,.2f} {request["currency"]}',
         )
+        st.write(
+    "**Город:**",
+    request.get("city") or "Не указан",
         st.write("**Срок оплаты:**", request["due_date"])
         st.write("**Договор:**", request["contract_number"] or "—")
 
