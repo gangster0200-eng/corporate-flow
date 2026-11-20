@@ -1773,21 +1773,18 @@ def show_payments(user):
                             WHERE id = %s
                             """,
                             (
-                                new_counterparty.strip(),
-                                new_city,
-                                new_amount,
-                                new_currency,
-                                new_due_date.isoformat(),
-                                new_purpose.strip(),
-                                new_contract_number.strip(),
-                                elif (
-    request["created_by"] == user["username"]
-    and status in ("На доработке", "Отклонён")
-):,
-                                "На проверке казначейства",
-                                updated_comments,
-                                request_id,
-                            ),
+    new_counterparty.strip(),
+    new_city,
+    new_amount,
+    new_currency,
+    new_due_date.isoformat(),
+    new_purpose.strip(),
+    new_contract_number.strip(),
+    1 if new_cashless == "Да" else 0,
+    "На проверке казначейства",
+    updated_comments,
+    request_id,
+),
                         )
 
                     if new_files:
@@ -2187,6 +2184,10 @@ def show_payments(user):
 
 
 
+    elif (
+    request["created_by"] == user["username"]
+    and status in ("На доработке", "Отклонён")
+):,
     elif status == "Оплачен":
         st.success(
             f'Оплачено: {request["payment_date"] or "дата не указана"}'
