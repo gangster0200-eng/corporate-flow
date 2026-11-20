@@ -1694,7 +1694,7 @@ def show_payments(user):
                     "png", "jpg", "jpeg", "txt", "csv",
                 ],
                 accept_multiple_files=True,
-                key=f"resubmit_files_{request_id}",
+                key=f"resubmit_files_{request_id}_{user['username']}",
             )
 
             resubmit = st.form_submit_button(
