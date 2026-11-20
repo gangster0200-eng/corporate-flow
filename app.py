@@ -1780,7 +1780,10 @@ def show_payments(user):
                                 new_due_date.isoformat(),
                                 new_purpose.strip(),
                                 new_contract_number.strip(),
-                                new_cashless == "Да",
+                                elif (
+    request["created_by"] == user["username"]
+    and status in ("На доработке", "Отклонён")
+):,
                                 "На проверке казначейства",
                                 updated_comments,
                                 request_id,
@@ -1959,10 +1962,9 @@ def show_payments(user):
                 st.rerun()
 
     elif (
-        role == "Инициатор"
-        and request["created_by"] == user["username"]
-        and status in ("На доработке", "Отклонён")
-    ):
+    request["created_by"] == user["username"]
+    and status in ("На доработке", "Отклонён")
+):
         st.warning(
             "Заявка возвращена. Исправь необходимые данные "
             "и отправь её повторно на согласование."
@@ -2141,7 +2143,7 @@ def show_payments(user):
                                 new_due_date.isoformat(),
                                 new_purpose.strip(),
                                 new_contract_number.strip(),
-                                new_cashless == "Да",
+                                1 if new_cashless == "Да" else 0,
                                 "На проверке казначейства",
                                 updated_comments,
                                 request_id,
