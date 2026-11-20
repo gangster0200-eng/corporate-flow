@@ -1974,7 +1974,9 @@ def show_payments(user):
         if isinstance(due_date_value, str):
             due_date_value = date.fromisoformat(due_date_value)
 
-        with st.form(f"resubmit_payment_form_{request_id}"):
+        with st.form(
+    f"resubmit_payment_form_{request_id}_{user['username']}"
+):
 
             new_counterparty = st.text_input(
                 "Контрагент",
