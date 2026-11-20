@@ -1958,12 +1958,230 @@ def show_payments(user):
                 st.success("Платёж отмечен как оплаченный.")
                 st.rerun()
 
-    elif status == "На доработке":
-        st.info(
-            "Заявка возвращена на доработку. "
-            "В этой демонстрационной версии повторная отправка "
-            "на согласование пока не реализована."
+    elif (
+        role == "Инициатор"
+        and request["created_by"] == user["username"]
+        and status in ("На доработке", "Отклонён")
+    ):
+        st.warning(
+            "Заявка возвращена. Исправь необходимые данные "
+            "и отправь её повторно на согласование."
         )
+
+        request_id = request["id"]
+
+        due_date_value = request["due_date"]
+        if isinstance(due_date_value, str):
+            due_date_value = date.fromisoformat(due_date_value)
+
+        with st.form(f"resubmit_payment_form_{request_id}"):
+
+            new_counterparty = st.text_input(
+                "Контрагент",
+                value=request["counterparty"] or "",
+            )
+
+            current_city = request.get("city")
+            city_index = (
+                CITIES.index(current_city)
+                if current_city in CITIES
+                else None
+            )
+
+            new_city = st.selectbox(
+                "Город размещения заявки",
+                CITIES,
+                index=city_index,
+                placeholder="Выберите город",
+            )
+
+            new_amount = st.number_input(
+                "Сумма",
+                min_value=0.01,
+                value=float(request["amount"]),
+                step=100.0,
+            )
+
+            currencies = ["RUB", "USD", "EUR", "CNY"]
+            current_currency = request.get("currency")
+
+            new_currency = st.selectbox(
+                "Валюта",
+                currencies,
+                index=(
+                    currencies.index(current_currency)
+                    if current_currency in currencies
+                    else 0
+                ),
+            )
+
+            new_cashless = st.radio(
+                "Безналичная оплата",
+                ["Да", "Нет"],
+                index=0 if request.get("cashless") else 1,
+                horizontal=True,
+            )
+
+            new_due_date = st.date_input(
+                "Срок оплаты",
+                value=due_date_value,
+            )
+
+            new_purpose = st.text_area(
+                "Назначение платежа",
+                value=request["purpose"] or "",
+            )
+
+            new_contract_number = st.text_input(
+                "Номер договора",
+                value=request.get("contract_number") or "",
+            )
+
+            resubmit_comment = st.text_area(
+                "Комментарий к повторной отправке",
+                placeholder="Какие исправления были внесены?",
+            )
+
+            new_files = st.file_uploader(
+                "Добавить исправленные документы",
+                type=[
+                    "pdf", "doc", "docx", "xls", "xlsx",
+                    "png", "jpg", "jpeg", "txt", "csv",
+                ],
+                accept_multiple_files=True,
+                key=f"resubmit_files_{request_id}",
+            )
+
+            resubmit = st.form_submit_button(
+                "Отправить на повторное согласование",
+                use_container_width=True,
+            )
+
+        if resubmit:
+            if not new_counterparty.strip():
+                st.error("Заполни контрагента.")
+
+            elif not new_city:
+                st.error("Выбери город.")
+
+            elif not new_purpose.strip():
+                st.error("Заполни назначение платежа.")
+
+            else:
+                try:
+                    with db() as conn:
+                        current_request = conn.execute(
+                            """
+                            SELECT *
+                            FROM public.requests
+                            WHERE id = %s
+                            """,
+                            (request_id,),
+                        ).fetchone()
+
+                        if current_request is None:
+                            raise ValueError(
+                                "Заявка не найдена."
+                            )
+
+                        if current_request["created_by"] != user["username"]:
+                            raise PermissionError(
+                                "Можно редактировать только собственные заявки."
+
+
+)
+
+                        if current_request["status"] not in (
+                            "На доработке",
+                            "Отклонён",
+                        ):
+                            raise ValueError(
+                                "Заявка больше не доступна для повторной отправки."
+                            )
+
+                        old_comments = (
+                            current_request["comments"] or ""
+                        )
+
+                        updated_comments = old_comments
+
+                        if resubmit_comment.strip():
+                            updated_comments += (
+                                "\n\nПовторная отправка: "
+                                + resubmit_comment.strip()
+                            )
+                        else:
+                            updated_comments += (
+                                "\n\nЗаявка отправлена повторно."
+                            )
+
+                        conn.execute(
+                            """
+                            UPDATE public.requests
+                            SET
+                                counterparty = %s,
+                                city = %s,
+                                amount = %s,
+                                currency = %s,
+                                due_date = %s,
+                                purpose = %s,
+                                contract_number = %s,
+                                cashless = %s,
+                                status = %s,
+                                comments = %s
+                            WHERE id = %s
+                            """,
+                            (
+                                new_counterparty.strip(),
+                                new_city,
+                                new_amount,
+                                new_currency,
+                                new_due_date.isoformat(),
+                                new_purpose.strip(),
+                                new_contract_number.strip(),
+                                new_cashless == "Да",
+                                "На проверке казначейства",
+                                updated_comments,
+                                request_id,
+                            ),
+                        )
+
+                    if new_files:
+                        save_attachments(
+                            user,
+                            "payment",
+                            request_id,
+                            new_files,
+                        )
+
+                    audit(
+                        user["username"],
+                        "payment_request_resubmitted",
+                        "payment",
+                        request_id,
+                        (
+                            "Заявка повторно отправлена в казначейство. "
+                            f"Контрагент: {new_counterparty.strip()}; "
+                            f"сумма: {new_amount} {new_currency}"
+                        ),
+                    )
+
+                    st.success(
+                        "Заявка повторно отправлена в казначейство!"
+                    )
+                    st.rerun()
+
+                except (ValueError, PermissionError, OSError) as error:
+                    st.error(str(error))
+
+                except Exception as error:
+                    st.error(
+                        f"Не удалось повторно отправить заявку: {error}"
+                    )
+
+
+
+
 
     elif status == "Оплачен":
         st.success(
