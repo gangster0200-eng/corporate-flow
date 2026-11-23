@@ -2685,66 +2685,22 @@ def main_app():
         "Журнал действий",
     ]
 
-    if st.button("Выйти"):
-        audit(user["username"], "logout")
-        del st.session_state.user
-        st.rerun()
-
-    st.divider()
-
-    if st.button("Выйти"):
-        audit(user["username"], "logout")
-        del st.session_state.user
-        st.rerun()
-
-    st.divider()
-
+    # Навигация
     page = st.sidebar.radio(
         "Навигация",
         menu_options,
         key="main_navigation",
     )
 
-    if page == "Обзор":
-        show_dashboard(user)
+    # Выход
+    if st.button("Выйти", key="logout_button"):
+        audit(user["username"], "logout")
+        del st.session_state.user
+        st.rerun()
 
-    elif page == "Платёжный календарь":
-        show_payment_calendar()
+    st.divider()
 
-    elif page == "Согласование платежа":
-        show_create_payment(user)
-
-    elif page == "Заявки":
-        show_payments(user)
-
-    elif page == "Согласование договоров":
-        show_contracts(user)
-
-    elif page == "Журнал действий":
-        show_audit_log(user)
-
-    elif page == "Смена пароля":
-        show_password_change(user)
-
-    elif page == "Управление пользователями":
-        show_user_management(user)
-
-
-
-
-# =========================================================
-# ЗАПУСК
-# =========================================================
-
-init_db()
-apply_corporate_style()
-
-if "user" not in st.session_state:
-    login()
-else:
-    main_app()
-
-
+    # Отображение разделов
     if page == "Обзор":
         show_dashboard(user)
 
