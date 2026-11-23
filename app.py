@@ -2187,7 +2187,7 @@ def show_payments(user):
     elif (
     request["created_by"] == user["username"]
     and status in ("На доработке", "Отклонён")
-):,
+    ):,
     elif status == "Оплачен":
         st.success(
             f'Оплачено: {request["payment_date"] or "дата не указана"}'
