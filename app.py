@@ -2692,14 +2692,21 @@ def main_app():
         key="main_navigation",
     )
 
-    # Выход
-    if st.button("Выйти", key="logout_button"):
-        audit(user["username"], "logout")
-        del st.session_state.user
-        st.rerun()
+    # Выход в боковом меню
+    with st.sidebar:
+        st.divider()
 
-    st.divider()
+        st.markdown(f"**Пользователь:** {user['username']}")
+        st.markdown(f"**Роль:** {user['role']}")
 
+        if st.button(
+            "🚪 Выйти",
+            key="logout_button",
+            use_container_width=True,
+        ):
+            audit(user["username"], "logout")
+            del st.session_state.user
+            st.rerun()
     # Отображение разделов
     if page == "Обзор":
         show_dashboard(user)
