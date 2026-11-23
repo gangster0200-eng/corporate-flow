@@ -2677,13 +2677,13 @@ def main_app():
     st.caption(f'{user["username"]} · {user["role"]}')
 
     menu_options = [
-    "Обзор",
-    "Согласование платежа",
-    "Заявки",
-    "Платёжный календарь",
-    "Согласование договоров",
-    "Журнал действий",
-]
+        "Обзор",
+        "Согласование платежа",
+        "Заявки",
+        "Платёжный календарь",
+        "Согласование договоров",
+        "Журнал действий",
+    ]
 
     if st.button("Выйти"):
         audit(user["username"], "logout")
@@ -2692,11 +2692,14 @@ def main_app():
 
     st.divider()
 
+    # Здесь должно остаться существующее получение page
+    # через st.sidebar.radio или другой элемент меню
+
     if page == "Обзор":
         show_dashboard(user)
-        
-    elif selected_menu == "Платёжный календарь":
-    show_payment_calendar()   
+
+    elif page == "Платёжный календарь":
+        show_payment_calendar()
 
     elif page == "Согласование платежа":
         show_create_payment(user)
@@ -2709,12 +2712,15 @@ def main_app():
 
     elif page == "Журнал действий":
         show_audit_log(user)
-        
+
     elif page == "Смена пароля":
         show_password_change(user)
 
     elif page == "Управление пользователями":
         show_user_management(user)
+
+
+
 
 # =========================================================
 # ЗАПУСК
