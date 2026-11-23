@@ -1346,6 +1346,270 @@ def show_user_management(user):
 # РАЗДЕЛ: ОБЗОР
 # =========================================================
 
+def show_payment_calendar():
+    import calendar
+    from datetime import date, datetime
+    from decimal import Decimal
+
+    st.subheader("Платёжный календарь")
+    st.caption("Плановые платежи по датам")
+
+    # Получаем месяц и год
+    today = date.today()
+
+    if "payment_calendar_year" not in st.session_state:
+        st.session_state.payment_calendar_year = today.year
+
+    if "payment_calendar_month" not in st.session_state:
+        st.session_state.payment_calendar_month = today.month
+
+    year = st.session_state.payment_calendar_year
+    month = st.session_state.payment_calendar_month
+
+    # Получаем платежи из базы данных
+    try:
+        with db() as conn:
+            requests = conn.execute(
+                """
+                SELECT
+                    id,
+                    counterparty,
+                    amount,
+                    currency,
+                    due_date,
+                    cashless,
+                    status
+                FROM public.requests
+                WHERE due_date IS NOT NULL
+                ORDER BY due_date
+                """
+            ).fetchall()
+
+    except Exception as error:
+        st.error(f"Не удалось загрузить платежи: {error}")
+        return
+
+    # Преобразуем дату из базы в формат date
+    def parse_payment_date(value):
+        if isinstance(value, datetime):
+            return value.date()
+
+        if isinstance(value, date):
+            return value
+
+        if value:
+            try:
+                return date.fromisoformat(str(value)[:10])
+            except (ValueError, TypeError):
+                return None
+
+        return None
+
+    # Подготавливаем платежи
+    payments = []
+
+    for request in requests:
+        payment_date = parse_payment_date(request["due_date"])
+
+        if payment_date is None:
+            continue
+
+        payments.append({
+            "id": request["id"],
+            "counterparty": request["counterparty"] or "Не указан",
+            "amount": request["amount"] or 0,
+            "currency": request["currency"] or "RUB",
+            "date": payment_date,
+            "cashless": request["cashless"],
+            "status": request["status"] or "Не указан",
+        })
+
+    # Навигация по месяцам
+    col1, col2, col3 = st.columns([1, 4, 1])
+
+    with col1:
+        if st.button("←", key="calendar_prev"):
+            if month == 1:
+                st.session_state.payment_calendar_month = 12
+                st.session_state.payment_calendar_year = year - 1
+            else:
+                st.session_state.payment_calendar_month = month - 1
+            st.rerun()
+
+    with col2:
+        month_names = [
+            "Январь", "Февраль", "Март", "Апрель",
+            "Май", "Июнь", "Июль", "Август",
+            "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
+        ]
+
+        st.markdown(
+            f"<h3 style='text-align:center'>"
+            f"{month_names[month - 1]} {year}"
+            f"</h3>",
+            unsafe_allow_html=True,
+        )
+
+    with col3:
+        if st.button("→", key="calendar_next"):
+            if month == 12:
+                st.session_state.payment_calendar_month = 1
+                st.session_state.payment_calendar_year = year + 1
+            else:
+                st.session_state.payment_calendar_month = month + 1
+            st.rerun()
+
+    # Выбираем платежи текущего месяца
+    month_payments = [
+        p for p in payments
+        if p["date"].year == year and p["date"].month == month
+    ]
+
+    # Количество платежей по дням
+    payments_by_day = {}
+
+    for payment in month_payments:
+        day = payment["date"].day
+        payments_by_day[day] = payments_by_day.get(day, 0) + 1
+
+    # Создаём календарную сетку
+    calendar_matrix = calendar.monthcalendar(year, month)
+
+    selected_date = st.session_state.get(
+        "payment_calendar_selected_date", today
+    )
+
+    if selected_date.year != year or selected_date.month != month:
+        selected_date = date(year, month, 1)
+        st.session_state.payment_calendar_selected_date = selected_date
+
+    weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+
+
+header = st.columns(7)
+
+    for col, weekday in zip(header, weekdays):
+        col.markdown(
+            f"<div style='text-align:center;color:gray'>"
+            f"<b>{weekday}</b></div>",
+            unsafe_allow_html=True,
+        )
+
+    for week_number, week in enumerate(calendar_matrix):
+        columns = st.columns(7)
+
+        for weekday_number, day in enumerate(week):
+            with columns[weekday_number]:
+                if day == 0:
+                    st.write(" ")
+                    continue
+
+                payment_count = payments_by_day.get(day, 0)
+
+                button_label = str(day)
+
+                if payment_count:
+                    button_label += f" · {payment_count}"
+
+                current_date = date(year, month, day)
+
+                if st.button(
+                    button_label,
+                    key=f"payment_day_{year}_{month}_{day}",
+                    use_container_width=True,
+                    type=(
+                        "primary"
+                        if current_date == selected_date
+                        else "secondary"
+                    ),
+                ):
+                    st.session_state.payment_calendar_selected_date = (
+                        current_date
+                    )
+                    st.rerun()
+
+    st.divider()
+
+    # Платежи выбранной даты
+    selected_payments = [
+        p for p in payments
+        if p["date"] == selected_date
+    ]
+
+    st.markdown(
+        f"### Платежи на {selected_date.strftime('%d.%m.%Y')}"
+    )
+
+    if not selected_payments:
+        st.info("На выбранную дату платежей нет.")
+
+    else:
+        total = Decimal("0")
+
+        for payment in selected_payments:
+            amount = Decimal(str(payment["amount"]))
+            total += amount
+
+            payment_type = (
+                "Безналичная оплата"
+                if payment["cashless"]
+                else "Наличная оплата"
+            )
+
+            with st.container(border=True):
+                col1, col2 = st.columns([3, 1])
+
+                with col1:
+                    st.markdown(
+                        f"**{payment['counterparty']}**"
+                    )
+                    st.caption(
+                        f"Заявка №{payment['id']} · {payment_type}"
+                    )
+                    st.caption(
+                        f"Статус: {payment['status']}"
+                    )
+
+                with col2:
+                    st.markdown(
+                        f"**{amount:,.2f} "
+                        f"{payment['currency']}**"
+                    )
+
+        # Итог по выбранной дате
+        currencies = {
+            p["currency"] for p in selected_payments
+        }
+
+        st.divider()
+
+        if len(currencies) == 1:
+            currency = next(iter(currencies))
+
+            st.metric(
+                "Общая сумма платежей",
+                f"{total:,.2f} {currency}",
+            )
+        else:
+            st.markdown("**Итого по валютам:**")
+
+            for currency in sorted(currencies):
+                currency_total = sum(
+                    (
+                        Decimal(str(p["amount"]))
+                        for p in selected_payments
+                        if p["currency"] == currency
+                    ),
+                    Decimal("0"),
+                )
+
+                st.write(
+                    f"{currency}: {currency_total:,.2f}"
+                )
+
+    st.caption(
+        f"Всего платежей в месяце: {len(month_payments)}"
+    )
 def show_dashboard(user):
     st.title("Рабочий стол")
 
@@ -1394,6 +1658,7 @@ def show_dashboard(user):
         )
     else:
         st.info("Платежей пока нет.")
+        
 
 # =========================================================
 # РАЗДЕЛ: СОЗДАНИЕ ПЛАТЕЖА
@@ -2413,18 +2678,14 @@ def main_app():
     st.title("📑 Corporate Flow")
     st.caption(f'{user["username"]} · {user["role"]}')
 
-    page = st.radio(
-        "Раздел",
-        [
-            "Обзор",
-            "Согласование платежа",
-            "Заявки",
-            "Согласование договоров",
-            "Смена пароля",
-            "Управление пользователями",
-            "Журнал действий",
-        ],
-    )
+    menu_options = [
+    "Обзор",
+    "Согласование платежа",
+    "Заявки",
+    "Платёжный календарь",
+    "Согласование договоров",
+    "Журнал действий",
+]
 
     if st.button("Выйти"):
         audit(user["username"], "logout")
@@ -2435,6 +2696,9 @@ def main_app():
 
     if page == "Обзор":
         show_dashboard(user)
+        
+    elif selected_menu == "Платёжный календарь":
+    show_payment_calendar()   
 
     elif page == "Согласование платежа":
         show_create_payment(user)
