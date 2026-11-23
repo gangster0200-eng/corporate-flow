@@ -1485,8 +1485,7 @@ def show_payment_calendar():
 
     weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 
-
-header = st.columns(7)
+    header = st.columns(7)
 
     for col, weekday in zip(header, weekdays):
         col.markdown(
@@ -1510,7 +1509,6 @@ header = st.columns(7)
 
                 if payment_count:
                     button_label += f" · {payment_count}"
-
                 current_date = date(year, month, day)
 
                 if st.button(
