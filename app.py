@@ -2298,6 +2298,7 @@ def show_payments(user):
         st.write("**Статус:**", request["status"])
         st.write("**Назначение:**", request["purpose"])
         st.write("**Комментарий:**", request["comments"] or "—")
+        st.write("DEBUG — роль пользователя:", repr(user.get("role")))
 
         # Удаление собственной заявки до проверки казначейством
     if (
