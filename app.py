@@ -1994,21 +1994,23 @@ def show_payments(user):
     st.title("Реестр заявок")
 
     requests = get_requests(user)
+
     # Фильтр по инициатору
-if user.get("role") not in ("Инициатор", "initiator"):
-    initiators = get_initiators()
+    if user.get("role") not in ("Инициатор", "initiator"):
+        initiators = get_initiators()
 
-    selected_initiator = st.selectbox(
-        "Инициатор",
-        ["Все инициаторы"] + initiators,
-        key="requests_initiator_filter",
-    )
+        selected_initiator = st.selectbox(
+            "Инициатор",
+            ["Все инициаторы"] + initiators,
+            key="requests_initiator_filter",
+        )
 
-    if selected_initiator != "Все инициаторы":
-        requests = [
-            request for request in requests
-            if request.get("created_by") == selected_initiator
-        ]
+        if selected_initiator != "Все инициаторы":
+            requests = [
+                request for request in requests
+                if request.get("created_by") == selected_initiator
+            ]
+
     search = st.text_input("Поиск по номеру или контрагенту")
 
     col1, col2 = st.columns(2)
@@ -2044,6 +2046,13 @@ if user.get("role") not in ("Инициатор", "initiator"):
 
     if not filtered:
         st.info("Заявок по заданным условиям не найдено.")
+        return
+
+
+
+
+
+
         return
 
     st.dataframe(
