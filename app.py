@@ -1256,8 +1256,11 @@ def show_password_change(user):
 def show_user_management(user):
     st.title("Управление пользователями")
 
-    if user["role"] != "Администратор":
-        st.warning("Этот раздел доступен только администратору.")
+    if user.get("role") not in (
+        "Администратор",
+        "Финансовый директор",
+    ):
+        st.warning("У вас нет доступа к этому разделу.")
         return
 
     st.subheader("Создать учётную запись")
@@ -1273,37 +1276,51 @@ def show_user_management(user):
 
     with st.form("create_user_form"):
         full_name = st.text_input("ФИО сотрудника")
+
         username = st.text_input("Логин").strip().lower()
+
         department = st.text_input(
             "Подразделение",
             value="Общее",
         )
+
         role = st.selectbox("Роль", roles)
-        password1 = st.text_input("Пароль", type="password")
+
+        password1 = st.text_input(
+            "Пароль",
+            type="password",
+        )
+
         password2 = st.text_input(
             "Повтори пароль",
             type="password",
         )
 
-        submitted = st.form_submit_button("Создать пользователя")
+        submitted = st.form_submit_button(
+            "Создать пользователя"
+        )
 
     if submitted:
         if not full_name.strip():
             st.error("Укажи ФИО сотрудника.")
+
         elif not username:
             st.error("Укажи логин.")
+
         elif password1 != password2:
             st.error("Пароли не совпадают.")
+
         elif len(password1) < 10:
             st.error("Пароль должен содержать не менее 10 символов.")
+
         else:
             try:
                 create_user(
                     username,
                     password1,
-                    full_name,
+                    full_name.strip().title(),
                     role,
-                    department,
+                    department.strip() or "Общее",
                 )
 
                 audit(
@@ -1323,7 +1340,44 @@ def show_user_management(user):
                 st.error(str(error))
 
     st.divider()
+
     st.subheader("Существующие учётные записи")
+
+    with db() as conn:
+        users = conn.execute(
+            """
+            SELECT
+                username,
+                full_name,
+                role,
+                department
+            FROM public.users
+            ORDER BY full_name
+            """
+        ).fetchall()
+
+    if not users:
+        st.info("Пользователей пока нет.")
+        return
+
+    st.dataframe(
+        [
+            {
+                "ФИО": (
+                    row["full_name"] or row["username"]
+                ).title(),
+                "Логин": row["username"],
+                "Роль": row["role"],
+                "Подразделение": row["department"],
+            }
+            for row in users
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
+
+
+
 
     with db() as conn:
         rows = conn.execute(
@@ -3020,14 +3074,8 @@ def main_app():
         "Платёжный календарь",
         "Согласование договоров",
         "Журнал действий",
-    ]
-    menu_options = [
-        "Обзор",
-        "Согласование платежа",
-        "Заявки",
-        "Платёжный календарь",
-        "Согласование договоров",
-        "Журнал действий",
+        "Смена пароля",
+        "Управление пользователями"
     ]
 
     # Инициаторам недоступен платёжный календарь
