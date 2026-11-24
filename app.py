@@ -17,28 +17,47 @@ def apply_corporate_style():
     <style>
     /* Основная палитра */
     :root {
-    --navy: #414141;
-    --burgundy: #963F4B;
-    --gold: #C9A7A7;
-    --background: #FFFFFF;
-    --text: #414141;
-    --muted: #777070;
-    --border: #E8DFE0
+        --navy: #414141;
+        --burgundy: #963F4B;
+        --gold: #C9A7A7;
+        --background: #FFFFFF;
+        --text: #414141;
+        --muted: #777070;
+        --border: #E8DFE0;
+    }
+
     /* Центрирование показателей рабочего стола */
     div[data-testid="stMetric"] {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
         text-align: center;
+        width: 100%;
     }
 
     div[data-testid="stMetricLabel"] {
+        display: flex;
         justify-content: center;
         width: 100%;
+        text-align: center;
     }
 
     div[data-testid="stMetricValue"] {
+        display: flex;
         justify-content: center;
         width: 100%;
+        text-align: center;
     }
-}
+
+    div[data-testid="stMetricValue"] > div {
+        width: 100%;
+        text-align: center;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+
+
 
 .stApp {
     background: #FFFFFF;
