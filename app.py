@@ -2794,11 +2794,18 @@ def show_audit_log(user):
 
 def main_app(): 
     user = st.session_state.user
+    display_name = (
+    user.get("full_name") or user["username"]
+    ).title()
+
+    role = user["role"]
+
+    st.title("🧾 Corporate Flow")
 
     st.caption(
-    f" 🧾 Финансовый контур сети театральных студий · "
-    f"{username.title()} · {role}"
-)
+    f"Финансовый контур сети театральных студий · "
+    f"{display_name} · {role}"
+    )
 
     menu_options = [
         "Обзор",
