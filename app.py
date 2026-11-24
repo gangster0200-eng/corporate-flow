@@ -2850,13 +2850,17 @@ def main_app():
     )
 
     menu_options = [
-        "Обзор",
-        "Согласование платежа",
-        "Заявки",
-        "Платёжный календарь",
-        "Согласование договоров",
-        "Журнал действий",
-    ]
+    "Обзор",
+    "Согласование платежа",
+    "Заявки",
+    "Платёжный календарь",
+    "Согласование договоров",
+    "Журнал действий",
+]
+
+# Инициаторам недоступен платёжный календарь
+if user.get("role") in ("Инициатор", "initiator"):
+    menu_options.remove("Платёжный календарь")
 
     # Навигация
     page = st.sidebar.radio(
@@ -2911,7 +2915,10 @@ def main_app():
         show_dashboard(user)
 
     elif page == "Платёжный календарь":
-        show_payment_calendar()
+        if user.get("role") in ("Инициатор", "initiator"):
+            st.error("У вас нет доступа к платёжному календарю.")
+        else:
+            show_payment_calendar()
 
     elif page == "Согласование платежа":
         show_create_payment(user)
