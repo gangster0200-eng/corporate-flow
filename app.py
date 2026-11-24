@@ -2858,6 +2858,14 @@ def show_audit_log(user):
 
 def main_app():
     user = st.session_state.user
+
+    # Данные пользователя
+    display_name = (
+        user.get("full_name") or user["username"]
+    ).title()
+
+    role = user["role"]
+
     # Шапка сервиса
     st.title("🧾 Corporate Flow")
 
@@ -2867,6 +2875,15 @@ def main_app():
     )
 
     st.divider()
+
+    menu_options = [
+        "Обзор",
+        "Согласование платежа",
+        "Заявки",
+        "Платёжный календарь",
+        "Согласование договоров",
+        "Журнал действий",
+    ]
     menu_options = [
         "Обзор",
         "Согласование платежа",
@@ -2891,9 +2908,8 @@ def main_app():
     with st.sidebar:
         st.divider()
 
-        display_name = user.get("full_name") or user["username"]
         st.markdown(f"**Пользователь:** {display_name}")
-        st.markdown(f"**Роль:** {user['role']}")
+        st.markdown(f"**Роль:** {role}")
 
         st.markdown(
             """
