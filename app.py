@@ -15,6 +15,7 @@ import streamlit as st
 def apply_corporate_style():
     st.markdown("""
     <style>
+
     /* Основная палитра */
     :root {
         --navy: #414141;
@@ -26,110 +27,82 @@ def apply_corporate_style():
         --border: #E8DFE0;
     }
 
-    /* Центрирование показателей рабочего стола */
-    div[data-testid="stMetric"] {
+    /* Основной фон */
+    .stApp {
+        background: #FFFFFF;
+        color: #414141;
+    }
+
+    /* Боковое меню */
+    [data-testid="stSidebar"] {
+        background: #F7F4F4;
+        border-right: 1px solid #E8DFE0;
+    }
+
+    [data-testid="stSidebar"] * {
+        color: #414141;
+    }
+
+    /* Заголовки */
+    h1, h2, h3 {
+        color: #6F2934 !important;
+    }
+
+    /* Кнопки */
+    .stButton > button,
+    .stFormSubmitButton > button {
+        background: #963F4B;
+        color: #FFFFFF;
+        border: 1px solid #963F4B;
+        border-radius: 8px;
+    }
+
+    .stButton > button:hover,
+    .stFormSubmitButton > button:hover {
+        background: #6F2934;
+        border-color: #6F2934;
+        color: #FFFFFF;
+    }
+
+    /* Карточки статистики */
+    [data-testid="stMetric"] {
+        background: #FFFFFF;
+        border: 1px solid #E8DFE0;
+        border-top: 3px solid #963F4B;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(80, 30, 40, 0.04);
         display: flex;
         flex-direction: column;
         align-items: center;
         text-align: center;
-        width: 100%;
     }
 
-    div[data-testid="stMetricLabel"] {
+    /* Названия показателей */
+    [data-testid="stMetricLabel"] {
+        width: 100%;
         display: flex;
         justify-content: center;
-        width: 100%;
         text-align: center;
     }
 
-    div[data-testid="stMetricValue"] {
+    /* Числовые значения */
+    [data-testid="stMetricValue"] {
+        width: 100%;
         display: flex;
         justify-content: center;
+        text-align: center;
+    }
+
+    [data-testid="stMetricValue"] > div {
         width: 100%;
         text-align: center;
     }
 
-    div[data-testid="stMetricValue"] > div {
-        width: 100%;
-        text-align: center;
-    }
     </style>
     """, unsafe_allow_html=True)
 
 
 
-
-.stApp {
-    background: #FFFFFF;
-    color: #414141;
-}
-
-[data-testid="stSidebar"] {
-    background: #F7F4F4;
-    border-right: 1px solid #E8DFE0;
-}
-
-[data-testid="stSidebar"] * {
-    color: #414141;
-}
-
-h1, h2, h3 {
-    color: #6F2934 !important;
-}
-
-.stButton > button,
-.stFormSubmitButton > button {
-    background: #963F4B;
-    color: #FFFFFF;
-    border: 1px solid #963F4B;
-    border-radius: 8px;
-}
-
-.stButton > button:hover,
-.stFormSubmitButton > button:hover {
-    background: #6F2934;
-    border-color: #6F2934;
-    color: #FFFFFF;
-}
-
-/* Карточки статистики */
-[data-testid="stMetric"] {
-    background: #FFFFFF;
-    border: 1px solid #E8DFE0;
-    border-top: 3px solid #963F4B;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(80, 30, 40, 0.04);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-}
-
-/* Названия показателей */
-[data-testid="stMetricLabel"] {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    text-align: center;
-}
-
-/* Числовые значения */
-[data-testid="stMetricValue"] {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    text-align: center;
-}
-
-[data-testid="stMetricValue"] > div {
-    width: 100%;
-    text-align: center;
-}
-
-
-
-    </style>
-    """, unsafe_allow_html=True)
 
 
 
