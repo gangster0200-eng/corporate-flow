@@ -2858,7 +2858,15 @@ def show_audit_log(user):
 
 def main_app():
     user = st.session_state.user
+    # Шапка сервиса
+    st.title("🧾 Corporate Flow")
 
+    st.caption(
+        f"Финансовый контур сети театральных студий · "
+        f"{display_name} · {role}"
+    )
+
+    st.divider()
     menu_options = [
         "Обзор",
         "Согласование платежа",
@@ -2947,6 +2955,7 @@ def main_app():
 
     elif page == "Управление пользователями":
         show_user_management(user)
+        
 
 
 
