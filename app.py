@@ -2572,6 +2572,48 @@ def show_payments(user):
     ):
         # Здесь должен находиться код редактирования заявки
         st.info("Заявка требует доработки или была отклонена.")
+        
+    # Менеджер безналичных платежей
+    elif (
+        role == "Финансовый менеджер (безналичные платежи)"
+        and status == "На оплате (безналично)"
+    ):
+        st.info("Заявка ожидает безналичной оплаты.")
+
+        if st.button(
+            "Подтвердить оплату",
+            key=f"cashless_paid_{request['id']}",
+            use_container_width=True,
+        ):
+            if change_payment_status(
+                user,
+                request["id"],
+                "Оплачен",
+            ):
+                st.success("Оплата успешно подтверждена.")
+                st.rerun()
+
+    # Менеджер наличных платежей
+    elif (
+        role == "Финансовый менеджер (наличные платежи)"
+        and status == "На выдаче (нал)"
+    ):
+        st.info("Заявка ожидает выдачи наличных.")
+
+        if st.button(
+            "Подтвердить выдачу",
+            key=f"cash_issued_{request['id']}",
+            use_container_width=True,
+        ):
+            if change_payment_status(
+                user,
+                request["id"],
+                "Выдано",
+            ):
+                st.success("Выдача денежных средств подтверждена.")
+                st.rerun()
+
+
 
     elif status == "Оплачен":
         st.success(
