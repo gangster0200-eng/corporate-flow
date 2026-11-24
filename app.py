@@ -1850,6 +1850,15 @@ def show_payments(user):
             "**Сумма:**",
             f'{request["amount"]:,.2f} {request["currency"]}',
         )
+        cashless_value = request.get("cashless")
+
+payment_type = (
+    "Безналичная оплата"
+    if cashless_value in (1, "1", True)
+    else "Наличная оплата"
+)
+
+st.write("**Форма оплаты:**", payment_type)
         st.write("**Город:**", request.get("city") or "Не указан")
         st.write("**Срок оплаты:**", request["due_date"])
         st.write("**Договор:**", request["contract_number"] or "—")
