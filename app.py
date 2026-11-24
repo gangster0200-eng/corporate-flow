@@ -2699,14 +2699,39 @@ def main_app():
         st.markdown(f"**Пользователь:** {user['username']}")
         st.markdown(f"**Роль:** {user['role']}")
 
+        st.markdown(
+            """
+            <style>
+            div.stButton > button[kind="secondary"] {
+                background-color: #963F4B;
+                color: white;
+                border: 1px solid #963F4B;
+                font-weight: 600;
+            }
+
+            div.stButton > button[kind="secondary"]:hover {
+                background-color: #762D38;
+                color: white;
+                border-color: #762D38;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
         if st.button(
-            "🚪 Выйти",
+            "Выйти",
             key="logout_button",
             use_container_width=True,
+            type="secondary",
         ):
             audit(user["username"], "logout")
             del st.session_state.user
             st.rerun()
+
+
+
+
     # Отображение разделов
     if page == "Обзор":
         show_dashboard(user)
