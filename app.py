@@ -746,22 +746,27 @@ def change_payment_status(
     comment="",
     payment_reference="",
 ):
+    role = user["role"]
+
     allowed = {
         "Казначейство": {
             "На согласовании финансового директора",
             "На доработке",
             "Отклонён",
-            "Оплачен",
         },
         "Финансовый директор": {
             "Готов к оплате",
             "На доработке",
             "Отклонён",
         },
+        "Финансовый менеджер (безналичные платежи)": {
+            "Оплачен",
+        },
+        "Финансовый менеджер (наличные платежи)": {
+            "Выдано",
+        },
         "Администратор": set(PAYMENT_STATUSES),
     }
-
-    role = user["role"]
 
     if new_status not in allowed.get(role, set()):
         raise PermissionError(
@@ -783,6 +788,25 @@ def change_payment_status(
 
         current_status = row["status"]
 
+        # Проверяем соответствие формы оплаты роли менеджера
+        cashless = int(row["cashless"] or 0)
+
+        if (
+            role == "Финансовый менеджер (безналичные платежи)"
+            and cashless != 1
+        ):
+            raise PermissionError(
+                "Вы можете обрабатывать только безналичные заявки."
+            )
+
+        if (
+            role == "Финансовый менеджер (наличные платежи)"
+            and cashless != 0
+        ):
+            raise PermissionError(
+                "Вы можете обрабатывать только наличные заявки."
+            )
+
         valid_transitions = {
             "На проверке казначейства": {
                 "На согласовании финансового директора",
@@ -794,9 +818,13 @@ def change_payment_status(
                 "На доработке",
                 "Отклонён",
             },
-            "Готов к оплате": {"Оплачен"},
+            "Готов к оплате": {
+                "Оплачен",
+                "Выдано",
+            },
             "На доработке": set(),
             "Оплачен": set(),
+            "Выдано": set(),
             "Отклонён": set(),
         }
 
@@ -805,9 +833,22 @@ def change_payment_status(
         ):
             return False
 
+        # Дополнительная проверка: безналичная заявка
+        # может завершиться статусом "Оплачен"
+        if new_status == "Оплачен" and cashless != 1:
+            raise PermissionError(
+                "Статус «Оплачен» доступен только для безналичных заявок."
+            )
+
+        # Наличная заявка завершается статусом "Выдано"
+        if new_status == "Выдано" and cashless != 0:
+            raise PermissionError(
+                "Статус «Выдано» доступен только для наличных заявок."
+            )
+
         payment_date = (
             date.today().isoformat()
-            if new_status == "Оплачен"
+            if new_status in ("Оплачен", "Выдано")
             else row["payment_date"]
         )
 
@@ -853,30 +894,62 @@ def change_payment_status(
         ),
     )
 
-    return True
+    return
+
+
+
+
+
+
 
 
 
 
 def get_requests(user):
+    role = user.get("role")
+
     with db() as conn:
 
         # Инициатор видит только собственные заявки
-        if user.get("role") in ("Инициатор", "initiator"):
+        if role in ("Инициатор", "initiator"):
             rows = conn.execute(
                 """
-                SELECT * FROM requests
+                SELECT *
+                FROM public.requests
                 WHERE created_by = %s
                 ORDER BY created_at DESC
                 """,
                 (user["username"],),
             ).fetchall()
 
+        # Финансовый менеджер по безналичным платежам
+        elif role == "Финансовый менеджер (безналичные платежи)":
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM public.requests
+                WHERE cashless = 1
+                ORDER BY created_at DESC
+                """
+            ).fetchall()
+
+        # Финансовый менеджер по наличным платежам
+        elif role == "Финансовый менеджер (наличные платежи)":
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM public.requests
+                WHERE cashless = 0
+                ORDER BY created_at DESC
+                """
+            ).fetchall()
+
         # Остальные роли видят все заявки
         else:
             rows = conn.execute(
                 """
-                SELECT * FROM requests
+                SELECT *
+                FROM public.requests
                 ORDER BY created_at DESC
                 """
             ).fetchall()
