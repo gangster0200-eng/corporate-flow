@@ -2703,15 +2703,15 @@ def main_app():
             """
             <style>
             div.stButton > button[kind="secondary"] {
-                background-color: #963F4B;
-                color: white;
+                background-color: #FFFFFF;
+                color: #963F4B;
                 border: 1px solid #963F4B;
                 font-weight: 600;
             }
 
             div.stButton > button[kind="secondary"]:hover {
-                background-color: #762D38;
-                color: white;
+                background-color: #F7F4F4;
+                color: #762D38;
                 border-color: #762D38;
             }
             </style>
