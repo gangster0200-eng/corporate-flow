@@ -2298,39 +2298,39 @@ def show_payments(user):
         st.write("**Комментарий:**", request["comments"] or "—")
 
         # Удаление собственной заявки до проверки казначейством
-if (
-    user.get("role") in ("Инициатор", "initiator")
-    and request["created_by"] == user["username"]
-    and request["status"] == "На проверке казначейства"
-):
-    st.divider()
-    st.warning(
-        "Заявку можно удалить, пока казначейство "
-        "не приступило к её согласованию."
-    )
-
-    confirm_delete = st.checkbox(
-        "Я подтверждаю удаление этой заявки",
-        key=f"confirm_delete_{request['id']}",
-    )
-
-    if st.button(
-        "Удалить заявку",
-        key=f"delete_request_{request['id']}",
-        type="secondary",
-        disabled=not confirm_delete,
-        use_container_width=True,
+    if (
+        user.get("role") in ("Инициатор", "initiator")
+        and request["created_by"] == user["username"]
+        and request["status"] == "На проверке казначейства"
     ):
-        success, message = delete_payment_request(
-            user,
-            request["id"],
+        st.divider()
+        st.warning(
+            "Заявку можно удалить, пока казначейство "
+            "не приступило к её согласованию."
         )
 
-        if success:
-            st.success(message)
-            st.rerun()
-        else:
-            st.error(message)
+        confirm_delete = st.checkbox(
+            "Я подтверждаю удаление этой заявки",
+            key=f"confirm_delete_{request['id']}",
+        )
+
+        if st.button(
+            "Удалить заявку",
+            key=f"delete_request_{request['id']}",
+            type="secondary",
+            disabled=not confirm_delete,
+            use_container_width=True,
+        ):
+            success, message = delete_payment_request(
+                user,
+                request["id"],
+            )
+
+            if success:
+                st.success(message)
+                st.rerun()
+            else:
+                st.error(message)
 
 
     # Повторная отправка заявки инициатором
