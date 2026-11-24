@@ -1815,27 +1815,25 @@ def show_dashboard(user):
     st.title("Рабочий стол")
 
     requests = get_requests(user)
-    contracts = get_contracts()
 
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3 = st.columns(3)
 
+    # Всего платежей
     c1.metric(
         "Всего платежей",
         len(requests),
     )
 
+    # Все заявки, которые ещё не завершены
     c2.metric(
         "В работе",
         sum(
             1 for r in requests
-            if r["status"] not in {
-                "Оплачен",
-                "Выдано",
-                "Отклонён",
-            }
+            if r["status"] not in ("Оплачен", "Выдано")
         ),
     )
 
+    # Завершённые платежи: безналичные и наличные
     c3.metric(
         "Оплачено",
         sum(
@@ -1844,19 +1842,13 @@ def show_dashboard(user):
         ),
     )
 
-    c4.metric(
-        "Договоры на согласовании",
-        sum(
-            1 for c in contracts
-            if c["status"] == "Согласование фин отделом"
-        ),
-    )
-
-
-
-
-
     st.subheader("Последние платежи")
+
+
+
+
+
+
 
     if requests:
         st.dataframe(
