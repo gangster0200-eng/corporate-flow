@@ -1993,13 +1993,19 @@ def get_active_users():
     with db() as conn:
         rows = conn.execute(
             """
-            SELECT username
+            SELECT username, full_name
             FROM public.users
-            ORDER BY username
+            ORDER BY full_name
             """
         ).fetchall()
 
-    return [row["username"] for row in rows]
+    return [
+        {
+            "username": row["username"],
+            "full_name": (row["full_name"] or row["username"]).title(),
+        }
+        for row in rows
+    ]
 def show_payments(user):
     st.title("Реестр заявок")
 
@@ -2008,16 +2014,23 @@ def show_payments(user):
     # Фильтр по автору заявки
     active_users = get_active_users()
 
+    author_options = {
+        "Все пользователи": None
+    }
+
+    for item in active_users:
+        author_options[item["full_name"]] = item["username"]
+
     selected_author = st.selectbox(
         "Автор заявки",
-        ["Все пользователи"] + active_users,
+        list(author_options.keys()),
         key="requests_author_filter",
     )
 
-    if selected_author != "Все пользователи":
+    if author_options[selected_author] is not None:
         requests = [
             request for request in requests
-            if request.get("created_by") == selected_author
+            if request.get("created_by") == author_options[selected_author]
         ]
 
     search = st.text_input("Поиск по номеру или контрагенту")
