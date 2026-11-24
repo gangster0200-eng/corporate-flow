@@ -497,7 +497,9 @@ def get_attachments(object_type, object_id):
     return [dict(row) for row in rows]
 def delete_payment_request(user, request_id):
     # Удалять может только инициатор
-    if user.get("role") not in ("Инициатор", "initiator"):
+    role = str(user.get("role") or "").strip().lower()
+
+    if role not in ("инициатор", "initiator"):
         return False, "Удаление доступно только инициатору."
 
     files_to_delete = []
