@@ -2704,7 +2704,8 @@ def main_app():
     with st.sidebar:
         st.divider()
 
-        st.markdown(f"**Пользователь:** {user['username']}")
+        display_name = user.get("full_name") or user["username"]
+        st.markdown(f"**Пользователь:** {display_name}")
         st.markdown(f"**Роль:** {user['role']}")
 
         st.markdown(
