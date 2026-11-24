@@ -955,7 +955,18 @@ comments = %s
 
 
 
+def get_initiators():
+    with db() as conn:
+        rows = conn.execute(
+            """
+            SELECT username
+            FROM public.users
+            WHERE role IN ('Инициатор', 'initiator')
+            ORDER BY username
+            """
+        ).fetchall()
 
+    return [row["username"] for row in rows]
 def get_requests(user):
     role = user.get("role")
 
@@ -1983,7 +1994,21 @@ def show_payments(user):
     st.title("Реестр заявок")
 
     requests = get_requests(user)
+    # Фильтр по инициатору
+if user.get("role") not in ("Инициатор", "initiator"):
+    initiators = get_initiators()
 
+    selected_initiator = st.selectbox(
+        "Инициатор",
+        ["Все инициаторы"] + initiators,
+        key="requests_initiator_filter",
+    )
+
+    if selected_initiator != "Все инициаторы":
+        requests = [
+            request for request in requests
+            if request.get("created_by") == selected_initiator
+        ]
     search = st.text_input("Поиск по номеру или контрагенту")
 
     col1, col2 = st.columns(2)
