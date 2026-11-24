@@ -496,20 +496,19 @@ def get_attachments(object_type, object_id):
 
     return [dict(row) for row in rows]
 def delete_payment_request(user, request_id):
-    # Удалять может только инициатор
     role = str(user.get("role") or "").strip().lower()
 
-    if (
-                not is_admin
-                and request["created_by"] != user["username"]
-            ):
-                return False, "Можно удалить только собственную заявку."
+    # Удалять могут инициатор и администратор
+    is_admin = role in ("администратор", "admin")
+
+    if role not in ("инициатор", "initiator", "администратор", "admin"):
+        return False, "У тебя нет прав на удаление заявок."
 
     files_to_delete = []
 
     try:
         with db() as conn:
-            # Повторно проверяем заявку непосредственно в БД
+            # Получаем заявку и блокируем её на время операции
             request = conn.execute(
                 """
                 SELECT *
@@ -525,18 +524,22 @@ def delete_payment_request(user, request_id):
 
             request = dict(request)
 
-            # Проверяем автора
-            if request["created_by"] != user["username"]:
+            # Инициатор может удалять только собственные заявки
+            if (
+                not is_admin
+                and str(request["created_by"]).strip()
+                != str(user["username"]).strip()
+            ):
                 return False, "Можно удалить только собственную заявку."
 
-            # Проверяем статус
+            # Удаление разрешено только до проверки казначейством
             if request["status"] != "На проверке казначейства":
                 return False, (
                     "Удалить можно только заявку, "
                     "которая ещё не прошла проверку казначейства."
                 )
 
-            # Получаем вложения именно этой заявки
+            # Получаем вложения заявки
             attachments = conn.execute(
                 """
                 SELECT stored_name
@@ -562,23 +565,7 @@ def delete_payment_request(user, request_id):
                 ("payment", str(request_id)),
             )
 
-            # Записываем событие в журнал до удаления заявки
-            audit(
-                user["username"],
-                "request_deleted",
-                "payment",
-                request_id,
-                (
-                    f'Удалена заявка №{request_id}; '
-                    f'автор: {user.get("full_name") or user["username"]}; '
-                    f'контрагент: {request.get("counterparty")}; '
-                    f'сумма: {request.get("amount")} '
-                    f'{request.get("currency")}; '
-                    f'статус: {request.get("status")}'
-                ),
-            )
-
-            # Удаляем саму заявку
+            # Удаляем заявку
             conn.execute(
                 """
                 DELETE FROM public.requests
@@ -587,7 +574,24 @@ def delete_payment_request(user, request_id):
                 (request_id,),
             )
 
-        # Удаляем физические файлы после успешного завершения транзакции
+        # Записываем событие в журнал после успешного удаления
+        audit(
+            user["username"],
+            "request_deleted",
+            "payment",
+            request_id,
+            (
+                f'Удалена заявка №{request_id}; '
+                f'автор: {request.get("created_by")}; '
+                f'удалил: {user.get("full_name") or user["username"]}; '
+                f'контрагент: {request.get("counterparty")}; '
+                f'сумма: {request.get("amount")} '
+                f'{request.get("currency")}; '
+                f'статус: {request.get("status")}'
+            ),
+        )
+
+        # Удаляем физические файлы
         for stored_name in files_to_delete:
             file_path = UPLOAD_DIR / stored_name
 
@@ -595,14 +599,15 @@ def delete_payment_request(user, request_id):
                 if file_path.is_file():
                     file_path.unlink()
             except OSError:
-                # Если файл не удалось удалить, заявка уже удалена,
-                # а запись в журнале сохранена.
                 pass
 
         return True, "Заявка успешно удалена."
 
     except Exception as error:
         return False, f"Не удалось удалить заявку: {error}"
+
+
+
 
 
 
