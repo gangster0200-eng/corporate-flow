@@ -2297,7 +2297,7 @@ def show_payments(user):
         st.write("**Назначение:**", request["purpose"])
         st.write("**Комментарий:**", request["comments"] or "—")
 
-    # Удаление собственной заявки до проверки казначейством
+        # Удаление собственной заявки до проверки казначейством
 if (
     user.get("role") in ("Инициатор", "initiator")
     and request["created_by"] == user["username"]
@@ -2331,9 +2331,6 @@ if (
             st.rerun()
         else:
             st.error(message)
-
-show_attachments("payment", request["id"])
-
 
 
     # Повторная отправка заявки инициатором
