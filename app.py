@@ -2637,6 +2637,11 @@ def show_payments(user):
             f'Оплачено: {request["payment_date"] or "дата не указана"}'
         )
 
+    elif status == "Выдано":
+        st.success(
+            f'Наличные выданы: {request["payment_date"] or "дата выдачи не указана"}'
+        )
+
     else:
         st.info("Для вашей роли сейчас нет доступных действий с заявкой.")
 
