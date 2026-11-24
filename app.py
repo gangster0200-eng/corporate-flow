@@ -495,6 +495,113 @@ def get_attachments(object_type, object_id):
         ).fetchall()
 
     return [dict(row) for row in rows]
+def delete_payment_request(user, request_id):
+    # Удалять может только инициатор
+    if user.get("role") not in ("Инициатор", "initiator"):
+        return False, "Удаление доступно только инициатору."
+
+    files_to_delete = []
+
+    try:
+        with db() as conn:
+            # Повторно проверяем заявку непосредственно в БД
+            request = conn.execute(
+                """
+                SELECT *
+                FROM public.requests
+                WHERE id = %s
+                FOR UPDATE
+                """,
+                (request_id,),
+            ).fetchone()
+
+            if request is None:
+                return False, "Заявка не найдена."
+
+            request = dict(request)
+
+            # Проверяем автора
+            if request["created_by"] != user["username"]:
+                return False, "Можно удалить только собственную заявку."
+
+            # Проверяем статус
+            if request["status"] != "На проверке казначейства":
+                return False, (
+                    "Удалить можно только заявку, "
+                    "которая ещё не прошла проверку казначейства."
+                )
+
+            # Получаем вложения именно этой заявки
+            attachments = conn.execute(
+                """
+                SELECT stored_name
+                FROM public.attachments
+                WHERE object_type = %s
+                  AND object_id = %s
+                """,
+                ("payment", str(request_id)),
+            ).fetchall()
+
+            files_to_delete = [
+                row["stored_name"]
+                for row in attachments
+            ]
+
+            # Удаляем записи о вложениях
+            conn.execute(
+                """
+                DELETE FROM public.attachments
+                WHERE object_type = %s
+                  AND object_id = %s
+                """,
+                ("payment", str(request_id)),
+            )
+
+            # Записываем событие в журнал до удаления заявки
+            audit(
+                user["username"],
+                "request_deleted",
+                "payment",
+                request_id,
+                (
+                    f'Удалена заявка №{request_id}; '
+                    f'автор: {user.get("full_name") or user["username"]}; '
+                    f'контрагент: {request.get("counterparty")}; '
+                    f'сумма: {request.get("amount")} '
+                    f'{request.get("currency")}; '
+                    f'статус: {request.get("status")}'
+                ),
+            )
+
+            # Удаляем саму заявку
+            conn.execute(
+                """
+                DELETE FROM public.requests
+                WHERE id = %s
+                """,
+                (request_id,),
+            )
+
+        # Удаляем физические файлы после успешного завершения транзакции
+        for stored_name in files_to_delete:
+            file_path = UPLOAD_DIR / stored_name
+
+            try:
+                if file_path.is_file():
+                    file_path.unlink()
+            except OSError:
+                # Если файл не удалось удалить, заявка уже удалена,
+                # а запись в журнале сохранена.
+                pass
+
+        return True, "Заявка успешно удалена."
+
+    except Exception as error:
+        return False, f"Не удалось удалить заявку: {error}"
+
+
+
+
 
 def show_attachments(object_type, object_id):
     files = get_attachments(object_type, object_id)
@@ -2190,7 +2297,45 @@ def show_payments(user):
         st.write("**Назначение:**", request["purpose"])
         st.write("**Комментарий:**", request["comments"] or "—")
 
-    show_attachments("payment", request["id"])
+    # Удаление собственной заявки до проверки казначейством
+if (
+    user.get("role") in ("Инициатор", "initiator")
+    and request["created_by"] == user["username"]
+    and request["status"] == "На проверке казначейства"
+):
+    st.divider()
+    st.warning(
+        "Заявку можно удалить, пока казначейство "
+        "не приступило к её согласованию."
+    )
+
+    confirm_delete = st.checkbox(
+        "Я подтверждаю удаление этой заявки",
+        key=f"confirm_delete_{request['id']}",
+    )
+
+    if st.button(
+        "Удалить заявку",
+        key=f"delete_request_{request['id']}",
+        type="secondary",
+        disabled=not confirm_delete,
+        use_container_width=True,
+    ):
+        success, message = delete_payment_request(
+            user,
+            request["id"],
+        )
+
+        if success:
+            st.success(message)
+            st.rerun()
+        else:
+            st.error(message)
+
+show_attachments("payment", request["id"])
+
+
+
     # Повторная отправка заявки инициатором
     if (
         user.get("role") == "Инициатор"
