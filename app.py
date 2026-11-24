@@ -1756,6 +1756,65 @@ def show_payment_calendar():
     st.caption(
         f"Всего платежей в месяце: {len(month_payments)}"
     )
+    # Разбивка платежей по статусам на выбранную дату
+    st.divider()
+    st.subheader("Разбивка платежей по статусам")
+
+    status_order = [
+        "На проверке казначейства",
+        "На согласовании финансового директора",
+        "На оплате (безналично)",
+        "На выдаче (нал)",
+        "Оплачен",
+        "Выдано",
+        "На доработке",
+        "Отклонён",
+    ]
+
+    for status in status_order:
+        status_payments = [
+            p for p in selected_payments
+            if p["status"] == status
+        ]
+
+        # Суммы отдельно по каждой валюте
+        currency_totals = {}
+
+        for payment in status_payments:
+            currency = payment["currency"]
+
+            currency_totals[currency] = (
+                currency_totals.get(
+                    currency,
+                    Decimal("0")
+                )
+                + Decimal(str(payment["amount"]))
+            )
+
+        if currency_totals:
+            total_text = " · ".join(
+                f"{currency}: {amount:,.2f}"
+                for currency, amount
+                in sorted(currency_totals.items())
+            )
+        else:
+            total_text = "0"
+
+        with st.container(border=True):
+            col1, col2, col3 = st.columns([4, 1, 3])
+
+            col1.write(f"**{status}**")
+            col2.metric(
+                "Заявок",
+                len(status_payments),
+            )
+            col3.metric(
+                "Сумма",
+                total_text,
+            )
+
+
+
 def show_dashboard(user):
     st.title("Рабочий стол")
 
