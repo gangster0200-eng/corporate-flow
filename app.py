@@ -1740,7 +1740,7 @@ def show_dashboard(user):
     )
     c3.metric(
         "Оплачено",
-        sum(1 for r in requests if r["status"] == "Оплачен"),
+        sum(1 for r in requests if r["status"] == "Оплачен","Выдано"),
     )
     c4.metric(
         "Договоры на согласовании",
