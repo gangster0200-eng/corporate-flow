@@ -92,14 +92,42 @@ h1, h2, h3 {
     color: #FFFFFF;
 }
 
+/* Карточки статистики */
 [data-testid="stMetric"] {
     background: #FFFFFF;
     border: 1px solid #E8DFE0;
     border-top: 3px solid #963F4B;
     border-radius: 10px;
     box-shadow: 0 2px 8px rgba(80, 30, 40, 0.04);
-        }
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
 }
+
+/* Названия показателей */
+[data-testid="stMetricLabel"] {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    text-align: center;
+}
+
+/* Числовые значения */
+[data-testid="stMetricValue"] {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    text-align: center;
+}
+
+[data-testid="stMetricValue"] > div {
+    width: 100%;
+    text-align: center;
+}
+
+
+
     </style>
     """, unsafe_allow_html=True)
 
