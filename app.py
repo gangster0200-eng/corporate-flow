@@ -23,7 +23,21 @@ def apply_corporate_style():
     --background: #FFFFFF;
     --text: #414141;
     --muted: #777070;
-    --border: #E8DFE0;
+    --border: #E8DFE0
+    /* Центрирование показателей рабочего стола */
+    div[data-testid="stMetric"] {
+        text-align: center;
+    }
+
+    div[data-testid="stMetricLabel"] {
+        justify-content: center;
+        width: 100%;
+    }
+
+    div[data-testid="stMetricValue"] {
+        justify-content: center;
+        width: 100%;
+    }
 }
 
 .stApp {
