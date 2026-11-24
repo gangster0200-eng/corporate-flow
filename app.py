@@ -2834,33 +2834,21 @@ def show_audit_log(user):
 # ГЛАВНОЕ МЕНЮ
 # =========================================================
 
-def main_app(): 
+def main_app():
     user = st.session_state.user
-    display_name = (
-    user.get("full_name") or user["username"]
-    ).title()
-
-    role = user["role"]
-
-    st.title("🧾 Corporate Flow")
-
-    st.caption(
-    f"Финансовый контур сети театральных студий · "
-    f"{display_name} · {role}"
-    )
 
     menu_options = [
-    "Обзор",
-    "Согласование платежа",
-    "Заявки",
-    "Платёжный календарь",
-    "Согласование договоров",
-    "Журнал действий",
-]
+        "Обзор",
+        "Согласование платежа",
+        "Заявки",
+        "Платёжный календарь",
+        "Согласование договоров",
+        "Журнал действий",
+    ]
 
-# Инициаторам недоступен платёжный календарь
-if user.get("role") in ("Инициатор", "initiator"):
-    menu_options.remove("Платёжный календарь")
+    # Инициаторам недоступен платёжный календарь
+    if user.get("role") in ("Инициатор", "initiator"):
+        menu_options.remove("Платёжный календарь")
 
     # Навигация
     page = st.sidebar.radio(
