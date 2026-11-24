@@ -922,7 +922,7 @@ def get_requests(user):
                 (user["username"],),
             ).fetchall()
 
-        # Финансовый менеджер по безналичным платежам
+        # Менеджер безналичных платежей видит безналичные заявки
         elif role == "Финансовый менеджер (безналичные платежи)":
             rows = conn.execute(
                 """
@@ -933,7 +933,7 @@ def get_requests(user):
                 """
             ).fetchall()
 
-        # Финансовый менеджер по наличным платежам
+        # Менеджер наличных платежей видит наличные заявки
         elif role == "Финансовый менеджер (наличные платежи)":
             rows = conn.execute(
                 """
@@ -955,6 +955,12 @@ def get_requests(user):
             ).fetchall()
 
     return [dict(row) for row in rows]
+
+
+
+
+
+
 def delete_payment_request(user, request_id):
     # Удалять заявки может только пользователь admin
     if user.get("username") != "admin":
