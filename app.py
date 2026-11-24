@@ -499,8 +499,11 @@ def delete_payment_request(user, request_id):
     # Удалять может только инициатор
     role = str(user.get("role") or "").strip().lower()
 
-    if role not in ("инициатор", "initiator"):
-        return False, "Удаление доступно только инициатору."
+    if (
+                not is_admin
+                and request["created_by"] != user["username"]
+            ):
+                return False, "Можно удалить только собственную заявку."
 
     files_to_delete = []
 
@@ -1148,8 +1151,12 @@ def get_requests(user):
 
 def delete_payment_request(user, request_id):
     # Удалять заявки может только пользователь admin
-    if user.get("username") != "admin":
-        raise PermissionError("У тебя нет прав на удаление заявок.")
+    role = str(user.get("role") or "").strip().lower()
+
+    if role not in ("инициатор", "initiator", "администратор", "admin"):
+        return False, "Удаление доступно только инициатору или администратору."
+
+    is_admin = role in ("администратор", "admin")
 
     # Получаем информацию о прикреплённых файлах
     attachments = get_attachments("payment", request_id)
