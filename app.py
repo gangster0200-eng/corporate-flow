@@ -787,10 +787,20 @@ def change_payment_status(
             return False
 
         current_status = row["status"]
-
-        # Проверяем соответствие формы оплаты роли менеджера
         cashless = int(row["cashless"] or 0)
 
+        # Автоматическое направление после согласования
+        # финансовым директором
+        if (
+            role == "Финансовый директор"
+            and new_status == "Готов к оплате"
+        ):
+            if cashless == 1:
+                new_status = "На оплате (безналично)"
+            else:
+                new_status = "На выдаче (нал)"
+
+        # Проверяем соответствие заявки роли менеджера
         if (
             role == "Финансовый менеджер (безналичные платежи)"
             and cashless != 1
@@ -807,6 +817,7 @@ def change_payment_status(
                 "Вы можете обрабатывать только наличные заявки."
             )
 
+        # Проверяем допустимость перехода между статусами
         valid_transitions = {
             "На проверке казначейства": {
                 "На согласовании финансового директора",
@@ -814,10 +825,18 @@ def change_payment_status(
                 "Отклонён",
             },
             "На согласовании финансового директора": {
-                "Готов к оплате",
+                "На оплате (безналично)",
+                "На выдаче (нал)",
                 "На доработке",
                 "Отклонён",
             },
+            "На оплате (безналично)": {
+                "Оплачен",
+            },
+            "На выдаче (нал)": {
+                "Выдано",
+            },
+            # Совместимость со старыми заявками
             "Готов к оплате": {
                 "Оплачен",
                 "Выдано",
@@ -833,14 +852,12 @@ def change_payment_status(
         ):
             return False
 
-        # Дополнительная проверка: безналичная заявка
-        # может завершиться статусом "Оплачен"
+        # Дополнительная проверка формы оплаты
         if new_status == "Оплачен" and cashless != 1:
             raise PermissionError(
                 "Статус «Оплачен» доступен только для безналичных заявок."
             )
 
-        # Наличная заявка завершается статусом "Выдано"
         if new_status == "Выдано" and cashless != 0:
             raise PermissionError(
                 "Статус «Выдано» доступен только для наличных заявок."
@@ -871,7 +888,9 @@ def change_payment_status(
                 status = %s,
                 payment_date = %s,
                 payment_reference = %s,
-                comments = %s
+
+
+comments = %s
             WHERE id = %s
             """,
             (
@@ -894,7 +913,9 @@ def change_payment_status(
         ),
     )
 
-    return
+    return True
+
+
 
 
 
@@ -922,24 +943,32 @@ def get_requests(user):
                 (user["username"],),
             ).fetchall()
 
-        # Менеджер безналичных платежей видит безналичные заявки
+        # Менеджер безналичных платежей
         elif role == "Финансовый менеджер (безналичные платежи)":
             rows = conn.execute(
                 """
                 SELECT *
                 FROM public.requests
                 WHERE cashless = 1
+                  AND status IN (
+                      'На оплате (безналично)',
+                      'Оплачен'
+                  )
                 ORDER BY created_at DESC
                 """
             ).fetchall()
 
-        # Менеджер наличных платежей видит наличные заявки
+        # Менеджер наличных платежей
         elif role == "Финансовый менеджер (наличные платежи)":
             rows = conn.execute(
                 """
                 SELECT *
                 FROM public.requests
                 WHERE cashless = 0
+                  AND status IN (
+                      'На выдаче (нал)',
+                      'Выдано'
+                  )
                 ORDER BY created_at DESC
                 """
             ).fetchall()
@@ -955,6 +984,12 @@ def get_requests(user):
             ).fetchall()
 
     return [dict(row) for row in rows]
+
+
+
+
+
+
 
 
 
