@@ -1730,20 +1730,31 @@ def show_dashboard(user):
 
     c1, c2, c3, c4 = st.columns(4)
 
-    c1.metric("Всего платежей", len(requests))
+    c1.metric(
+        "Всего платежей",
+        len(requests),
+    )
+
     c2.metric(
         "В работе",
         sum(
             1 for r in requests
-            if r["status"] not in {"Оплачен", "Отклонён"}
+            if r["status"] not in {
+                "Оплачен",
+                "Выдано",
+                "Отклонён",
+            }
         ),
     )
+
     c3.metric(
-         sum(
-    1 for r in requests
-    if r["status"] in ("Оплачен", "Выдано")
-),
+        "Оплачено",
+        sum(
+            1 for r in requests
+            if r["status"] in ("Оплачен", "Выдано")
+        ),
     )
+
     c4.metric(
         "Договоры на согласовании",
         sum(
@@ -1751,6 +1762,10 @@ def show_dashboard(user):
             if c["status"] == "Согласование фин отделом"
         ),
     )
+
+
+
+
 
     st.subheader("Последние платежи")
 
