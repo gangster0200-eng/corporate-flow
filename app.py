@@ -530,15 +530,15 @@ def init_db():
 
     with db() as conn:
         conn.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id BIGSERIAL PRIMARY KEY,
-        username TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        password_salt TEXT NOT NULL,
-        role TEXT NOT NULL,
-        department TEXT NOT NULL DEFAULT 'Общее'
-    )
-""")
+            CREATE TABLE IF NOT EXISTS users (
+                id BIGSERIAL PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                password_salt TEXT NOT NULL,
+                role TEXT NOT NULL,
+                department TEXT NOT NULL DEFAULT 'Общее'
+            )
+        """)
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS audit_log (
@@ -561,53 +561,49 @@ def init_db():
             ON requests(counterparty)
         """)
 
-
-
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS audit_log (
-                id BIGSERIAL PRIMARY KEY,
-                occurred_at TEXT NOT NULL,
-                actor TEXT NOT NULL,
-                action TEXT NOT NULL,
-                request_id TEXT,
-                details TEXT
-            )
-        """)
-
-        conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_requests_status
-            ON requests(status)
-        """)
-
-        conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_requests_counterparty
-            ON requests(counterparty)
-        """)
-
-        # Добавляем новые столбцы в существующую базу данных,
-        # если их там ещё нет.
+        # Проверяем существующие столбцы заявок
         request_columns = {
             row["column_name"]
             for row in conn.execute(
-               "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'requests'"
+                """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'requests'
+                """
             ).fetchall()
         }
 
+        # Добавляем столбец формы оплаты
         if "cashless" not in request_columns:
-            conn.execute(
-                """
-                ALTER TABLE requests
+            conn.execute("""
+                ALTER TABLE public.requests
                 ADD COLUMN cashless INTEGER NOT NULL DEFAULT 1
-                """
-            )
+            """)
 
+        # Добавляем столбец ответственного
         if "assigned_to" not in request_columns:
-            conn.execute(
-                """
-                ALTER TABLE requests
+            conn.execute("""
+                ALTER TABLE public.requests
                 ADD COLUMN assigned_to TEXT
-                """
-            )
+            """)
+
+        # Перенаправляем старые заявки
+        # со статусом "Готов к оплате"
+        conn.execute("""
+            UPDATE public.requests
+            SET status = CASE
+                WHEN cashless = 1
+                    THEN 'На оплате (безналично)'
+                WHEN cashless = 0
+                    THEN 'На выдаче (нал)'
+            END
+            WHERE status = 'Готов к оплате'
+              AND cashless IN (0, 1)
+        """)
+
+
+
 
 
 
